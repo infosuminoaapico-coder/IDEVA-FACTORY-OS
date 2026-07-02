@@ -12,7 +12,8 @@ import {
   Database,
   Layers,
   Sparkles,
-  Info
+  Info,
+  ChevronDown
 } from "lucide-react";
 import { BomRecipe, Product, RawMaterial, ProductionOrder } from "../types";
 
@@ -41,6 +42,9 @@ export default function Boms({
 
   // Form states
   const [productId, setProductId] = useState<number | "">("");
+  const [productSearch, setProductSearch] = useState("");
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
+  const [openDropdownIdx, setOpenDropdownIdx] = useState<number | null>(null);
   const [version, setVersion] = useState("v1.0");
   const [status, setStatus] = useState("active");
   const [notes, setNotes] = useState("");
@@ -94,6 +98,8 @@ export default function Boms({
     if (bom) {
       setEditingBom(clone ? null : bom);
       setProductId(bom.product_id);
+      const matchedProd = products.find(p => p.id === bom.product_id);
+      setProductSearch(matchedProd ? `${matchedProd.code} - ${matchedProd.name}` : "");
       setVersion(clone ? "v1.0" : bom.version);
       setStatus(bom.status);
       setNotes(bom.notes || "");
@@ -106,6 +112,7 @@ export default function Boms({
     } else {
       setEditingBom(null);
       setProductId("");
+      setProductSearch("");
       setVersion("v1.0");
       setStatus("active");
       setNotes("");
@@ -418,21 +425,76 @@ export default function Boms({
             <form onSubmit={handleSaveSubmit} className="flex-1 overflow-y-auto flex flex-col">
               <div className="p-5 space-y-4 flex-1">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
+                  <div className="relative">
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">เลือกสินค้าผลิตภัณฑ์ <span className="text-red-500">*</span></label>
-                    <select
-                      value={productId}
-                      onChange={(e) => setProductId(Number(e.target.value))}
-                      required
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-500 bg-white"
-                    >
-                      <option value="">-- กรุณาเลือกสินค้า --</option>
-                      {products.map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.code} - {p.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={productSearch}
+                        onChange={(e) => {
+                          setProductSearch(e.target.value);
+                          setIsProductDropdownOpen(true);
+                          const matched = products.find(p => `${p.code} - ${p.name}`.toLowerCase() === e.target.value.toLowerCase());
+                          if (matched) {
+                            setProductId(matched.id);
+                          } else {
+                            setProductId("");
+                          }
+                        }}
+                        onFocus={() => setIsProductDropdownOpen(true)}
+                        onBlur={() => {
+                          setTimeout(() => {
+                            setIsProductDropdownOpen(false);
+                          }, 250);
+                        }}
+                        placeholder="พิมพ์เพื่อค้นหา หรือเลือกจากรายการ..."
+                        required
+                        className="w-full px-3 py-1.5 pr-8 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-500 bg-white"
+                      />
+                      <div className="absolute right-2.5 top-2.5 text-slate-400 pointer-events-none">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    {isProductDropdownOpen && (
+                      <div className="absolute z-[60] left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl divide-y divide-slate-100">
+                        {products
+                          .filter(p => {
+                            const pCode = (p.code || "").toLowerCase();
+                            const pName = (p.name || "").toLowerCase();
+                            const q = productSearch.toLowerCase();
+                            return pCode.includes(q) || pName.includes(q);
+                          })
+                          .map(p => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => {
+                                setProductId(p.id);
+                                setProductSearch(`${p.code} - ${p.name}`);
+                                setIsProductDropdownOpen(false);
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 text-slate-700 font-sans transition-colors flex items-center justify-between"
+                            >
+                              <span className="font-semibold text-slate-800">{p.code} - {p.name}</span>
+                              <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono uppercase">{p.type}</span>
+                            </button>
+                          ))
+                        }
+                        {products.filter(p => {
+                          const pCode = (p.code || "").toLowerCase();
+                          const pName = (p.name || "").toLowerCase();
+                          const q = productSearch.toLowerCase();
+                          return pCode.includes(q) || pName.includes(q);
+                        }).length === 0 && (
+                          <div className="px-3 py-2 text-xs text-slate-400 italic">
+                            ไม่พบสินค้าผลิตภัณฑ์ที่ตรงกัน
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -487,23 +549,93 @@ export default function Boms({
                     </button>
                   </div>
 
-                  <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
                     {materials.map((m, idx) => (
                       <div key={idx} className="flex gap-2 items-center bg-slate-50 p-2.5 rounded-lg border border-slate-200/60">
-                        {/* Material dropdown selection */}
-                        <div className="flex-1">
-                          <select
-                            value={m.material_name}
-                            onChange={(e) => handleMaterialChange(idx, "material_name", e.target.value)}
-                            className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-md text-xs focus:outline-none focus:border-blue-500"
-                          >
-                            <option value="">-- เลือกสารดิบ --</option>
-                            {rawMaterials.map(rm => (
-                              <option key={rm.id} value={rm.name}>
-                                {rm.code} - {rm.name}
-                              </option>
-                            ))}
-                          </select>
+                        {/* Material dropdown selection with Search & Typeable capability */}
+                        <div className="flex-1 relative">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={m.material_name}
+                              onChange={(e) => {
+                                handleMaterialChange(idx, "material_name", e.target.value);
+                                setOpenDropdownIdx(idx);
+                              }}
+                              onFocus={() => setOpenDropdownIdx(idx)}
+                              onBlur={() => {
+                                setTimeout(() => {
+                                  setOpenDropdownIdx(null);
+                                }, 250);
+                              }}
+                              placeholder="พิมพ์วัตถุดิบเพื่อค้นหา หรือเลือกจากรายการ..."
+                              className="w-full pl-2 pr-7 py-1.5 bg-white border border-slate-200 rounded-md text-xs focus:outline-none focus:border-blue-500 font-sans"
+                            />
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              onClick={() => {
+                                setOpenDropdownIdx(openDropdownIdx === idx ? null : idx);
+                              }}
+                              className="absolute right-1.5 top-1.5 p-0.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                            >
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {openDropdownIdx === idx && (
+                            <div className="absolute z-[70] left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-md shadow-xl divide-y divide-slate-100">
+                              {rawMaterials
+                                .filter(rm => {
+                                  const rmName = (rm.name || "").toLowerCase();
+                                  const rmCode = (rm.code || "").toLowerCase();
+                                  const q = (m.material_name || "").toLowerCase();
+                                  return rmName.includes(q) || rmCode.includes(q);
+                                })
+                                .map(rm => (
+                                  <button
+                                    key={rm.id}
+                                    type="button"
+                                    onClick={() => {
+                                      handleMaterialChange(idx, "material_name", rm.name);
+                                      setOpenDropdownIdx(null);
+                                    }}
+                                    className="w-full text-left px-2.5 py-2 text-xs hover:bg-blue-50 text-slate-700 font-sans transition-colors flex flex-col gap-0.5"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-semibold text-slate-800">{rm.code} - {rm.name}</span>
+                                      <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono uppercase">{rm.unit}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] text-slate-500">
+                                      <span className={rm.stock_qty <= rm.min_stock ? "text-red-500 font-medium" : "text-emerald-600 font-medium"}>
+                                        📦 คลังคงเหลือ: {rm.stock_qty.toLocaleString()} {rm.unit}
+                                      </span>
+                                      {rm.min_stock > 0 && (
+                                        <span className="text-slate-400 font-mono text-[9px]">
+                                          (ขั้นต่ำ: {rm.min_stock})
+                                        </span>
+                                      )}
+                                    </div>
+                                  </button>
+                                ))
+                              }
+                              {rawMaterials.filter(rm => {
+                                const rmName = (rm.name || "").toLowerCase();
+                                const rmCode = (rm.code || "").toLowerCase();
+                                const q = (m.material_name || "").toLowerCase();
+                                return rmName.includes(q) || rmCode.includes(q);
+                              }).length === 0 && (
+                                <div className="px-2.5 py-2 text-xs text-slate-400 italic">
+                                  ไม่พบวัตถุดิบเคมีที่ตรงกัน
+                                </div>
+                              )}
+                              {m.material_name.trim() !== "" && !rawMaterials.some(rm => rm.name.toLowerCase() === m.material_name.toLowerCase()) && (
+                                <div className="p-2 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-500 italic">
+                                  ✍️ ใช้ชื่อที่พิมพ์: "{m.material_name}" (เพิ่มข้อมูลสารเคมีนอกระบบ)
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {/* Quantity */}
