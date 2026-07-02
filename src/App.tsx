@@ -1,0 +1,378 @@
+import React, { useState, useEffect } from "react";
+import Sidebar from "./components/Sidebar";
+import Topbar from "./components/Topbar";
+import Dashboard from "./components/Dashboard";
+import Customers from "./components/Customers";
+import Boms from "./components/Boms";
+import { 
+  PrecheckPage, 
+  ProductionPage, 
+  PackingPage, 
+  PurchasePage, 
+  GrnsPage, 
+  InventoryPage, 
+  ReportPage 
+} from "./components/OtherPages";
+import { 
+  Customer, 
+  Product, 
+  RawMaterial, 
+  BomRecipe, 
+  ProductionOrder, 
+  PackingOrder, 
+  PurchaseOrder, 
+  Grn, 
+  Precheck, 
+  InventoryPack 
+} from "./types";
+import { CheckCircle2, AlertCircle } from "lucide-react";
+
+const THEMES = [
+  {
+    id: "blue",
+    name: "ฟ้าพาสเทล",
+    color: "#3b82f6",
+    primary: "#3b82f6",
+    hover: "#2563eb",
+    light: "#f0f6ff",
+    border: "#dbeafe",
+    dark: "#1d4ed8",
+    brand: "#60a5fa"
+  },
+  {
+    id: "sage",
+    name: "เขียวพาสเทล",
+    color: "#10b981",
+    primary: "#10b981",
+    hover: "#059669",
+    light: "#f0fdf4",
+    border: "#d1fae5",
+    dark: "#047857",
+    brand: "#34d399"
+  },
+  {
+    id: "rose",
+    name: "ชมพูพาสเทล",
+    color: "#f43f5e",
+    primary: "#f43f5e",
+    hover: "#e11d48",
+    light: "#fff1f2",
+    border: "#ffe4e6",
+    dark: "#be123c",
+    brand: "#fb7185"
+  },
+  {
+    id: "lavender",
+    name: "ม่วงพาสเทล",
+    color: "#8b5cf6",
+    primary: "#8b5cf6",
+    hover: "#7c3aed",
+    light: "#f5f3ff",
+    border: "#ede9fe",
+    dark: "#6d28d9",
+    brand: "#a78bfa"
+  },
+  {
+    id: "amber",
+    name: "พีชพาสเทล",
+    color: "#f59e0b",
+    primary: "#f59e0b",
+    hover: "#d97706",
+    light: "#fffbeb",
+    border: "#fef3c7",
+    dark: "#b45309",
+    brand: "#fbbf24"
+  }
+];
+
+export default function App() {
+  const [activePage, setActivePage] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTheme, setActiveTheme] = useState(() => localStorage.getItem("factory_theme") || "blue");
+
+  // Core database states
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
+  const [bomRecipes, setBomRecipes] = useState<BomRecipe[]>([]);
+  const [productionOrders, setProductionOrders] = useState<ProductionOrder[]>([]);
+  const [packingOrders, setPackingOrders] = useState<PackingOrder[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [grns, setGrns] = useState<Grn[]>([]);
+  const [prechecks, setPrechecks] = useState<Precheck[]>([]);
+  const [inventoryPacks, setInventoryPacks] = useState<InventoryPack[]>([
+    { id: 1, code: "PK-001", type: "ขวด", name: "ขวด HDPE ขนาด 1 ลิตร", qty: 2450, unit: "ชิ้น", status: "active" },
+    { id: 2, code: "PK-002", type: "ฝา", name: "ฝาสกรูพลาสติก สีขาว", qty: 4800, unit: "ชิ้น", status: "active" },
+    { id: 3, code: "PK-003", type: "ฉลาก", name: "ฉลากน้ำยาเคลือบแก้ว P-001", qty: 1500, unit: "ชิ้น", status: "active" },
+    { id: 4, code: "PK-004", type: "ฉลาก", name: "ฉลากสารฆ่าเชื้อ P-002", qty: 850, unit: "ชิ้น", status: "active" }
+  ]);
+
+  // UI Toast state
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [dbStatus, setDbStatus] = useState<{ useMySQL: boolean; host: string; database: string; user: string } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // Helper fetcher
+  const fetchEntity = async (entity: string, action = "list") => {
+    try {
+      const res = await fetch(`/api/${entity}?action=${action}`);
+      if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+      const payload = await res.json();
+      return payload.data || [];
+    } catch (e) {
+      console.error(`Error fetching ${entity}:`, e);
+      return [];
+    }
+  };
+
+  // Refresh all tables from backend
+  const loadAllData = async () => {
+    try {
+      const dbRes = await fetch("/api/db-status");
+      if (dbRes.ok) {
+        const statusData = await dbRes.json();
+        setDbStatus(statusData);
+      }
+    } catch (e) {
+      console.error("Error loading DB status:", e);
+    }
+
+    const custs = await fetchEntity("customers");
+    const prods = await fetchEntity("products");
+    const mats = await fetchEntity("raw_materials");
+    const recipes = await fetchEntity("bom_recipes");
+    const pos = await fetchEntity("production_orders");
+    const packOrders = await fetchEntity("packing_orders");
+    const pOrders = await fetchEntity("purchase_orders");
+    const grnLogs = await fetchEntity("grns");
+    const checks = await fetchEntity("prechecks");
+
+    setCustomers(custs);
+    setProducts(prods);
+    setRawMaterials(mats);
+    setBomRecipes(recipes);
+    setProductionOrders(pos);
+    setPackingOrders(packOrders);
+    setPurchaseOrders(pOrders);
+    setGrns(grnLogs);
+    setPrechecks(checks);
+  };
+
+  useEffect(() => {
+    localStorage.setItem("factory_theme", activeTheme);
+    const config = THEMES.find(t => t.id === activeTheme) || THEMES[0];
+    const root = document.documentElement;
+    root.style.setProperty("--primary-color", config.primary);
+    root.style.setProperty("--primary-hover", config.hover);
+    root.style.setProperty("--primary-light", config.light);
+    root.style.setProperty("--primary-border", config.border);
+    root.style.setProperty("--primary-dark", config.dark);
+    root.style.setProperty("--primary-brand", config.brand);
+  }, [activeTheme]);
+
+  useEffect(() => {
+    loadAllData();
+  }, []);
+
+  // Post / Save endpoints helpers
+  const handleSave = async (entity: string, payload: any, successMsg: string) => {
+    try {
+      const res = await fetch(`/api/${entity}?action=save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(successMsg, "success");
+        await loadAllData();
+      } else {
+        throw new Error(data.message || "บันทึกไม่สำเร็จ");
+      }
+    } catch (e: any) {
+      showToast(e.message || "การเชื่อมต่อเซิร์ฟเวอร์ล้มเหลว", "error");
+    }
+  };
+
+  const handleDelete = async (entity: string, id: number, successMsg: string) => {
+    try {
+      const res = await fetch(`/api/${entity}?action=delete&id=${id}`, {
+        method: "POST"
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(successMsg, "success");
+        await loadAllData();
+      } else {
+        throw new Error(data.message || "ลบไม่สำเร็จ");
+      }
+    } catch (e: any) {
+      showToast(e.message || "ไม่สามารถติดต่อฐานข้อมูลได้", "error");
+    }
+  };
+
+  // Triggered when GRN is created (adds chemicals to stock)
+  const handleAddGrn = async (grn: any) => {
+    await handleSave("grns", grn, "บันทึกใบ GRN และอัปเดตสต็อกคงคลังสำเร็จ!");
+  };
+
+  // Render subpage views
+  const renderActivePageContent = () => {
+    switch (activePage) {
+      case "dashboard":
+        return (
+          <Dashboard 
+            productionOrders={productionOrders}
+            rawMaterials={rawMaterials}
+            packingOrders={packingOrders}
+            prechecks={prechecks}
+            setActivePage={setActivePage}
+          />
+        );
+      case "customer":
+        return (
+          <Customers 
+            customers={customers}
+            onSaveCustomer={async (c) => handleSave("customers", c, "บันทึกข้อมูลลูกค้าเรียบร้อยแล้ว!")}
+            onDeleteCustomer={async (id) => handleDelete("customers", id, "ลบข้อมูลลูกค้าเรียบร้อยแล้ว!")}
+            productionOrders={productionOrders}
+            bomRecipes={bomRecipes}
+          />
+        );
+      case "bom":
+        return (
+          <Boms 
+            bomRecipes={bomRecipes}
+            products={products}
+            rawMaterials={rawMaterials}
+            productionOrders={productionOrders}
+            onSaveBom={async (b) => handleSave("bom_recipes", b, "บันทึกสูตรการผลิต (BOM) เรียบร้อยแล้ว!")}
+            onDeleteBom={async (id) => handleDelete("bom_recipes", id, "ลบสูตรการผลิต (BOM) เรียบร้อยแล้ว!")}
+          />
+        );
+      case "precheck":
+        return (
+          <PrecheckPage 
+            prechecks={prechecks}
+            onAddPrecheck={async (p) => handleSave("prechecks", p, "บันทึกใบวิเคราะห์สารเคมีเรียบร้อยแล้ว!")}
+          />
+        );
+      case "production":
+        return (
+          <ProductionPage 
+            productionOrders={productionOrders}
+            products={products}
+            customers={customers}
+            onSaveProduction={async (po) => handleSave("production_orders", po, "ออกใบสั่งประกอบการผลิตสำเร็จ!")}
+            onDeleteProduction={async (id) => handleDelete("production_orders", id, "ยกเลิกใบสั่งผลิตสำเร็จ!")}
+          />
+        );
+      case "packing":
+        return (
+          <PackingPage 
+            packingOrders={packingOrders}
+            onAddPacking={async (pk) => handleSave("packing_orders", pk, "บันทึกคิวไลน์บรรจุขวดสำเร็จ!")}
+          />
+        );
+      case "purchase":
+        return (
+          <PurchasePage 
+            purchaseOrders={purchaseOrders}
+            rawMaterials={rawMaterials}
+            onAddPurchase={async (po) => handleSave("purchase_orders", po, "ออกใบสั่งสั่งซื้อเคมีภัณฑ์เสร็จสิ้น!")}
+          />
+        );
+      case "grn":
+        return (
+          <GrnsPage 
+            grns={grns}
+            rawMaterials={rawMaterials}
+            purchaseOrders={purchaseOrders}
+            onAddGrn={handleAddGrn}
+          />
+        );
+      case "inventory":
+        return (
+          <InventoryPage 
+            rawMaterials={rawMaterials}
+            inventoryPacks={inventoryPacks}
+            productionOrders={productionOrders}
+          />
+        );
+      case "report":
+        return (
+          <ReportPage 
+            productionOrders={productionOrders}
+            purchaseOrders={purchaseOrders}
+            rawMaterials={rawMaterials}
+            products={products}
+            customers={customers}
+            grns={grns}
+            packingOrders={packingOrders}
+            prechecks={prechecks}
+          />
+        );
+      default:
+        return (
+          <div className="p-8 text-center text-slate-400">
+            ขออภัย ไม่พบหน้าที่คุณร้องขอในสารระบบ
+          </div>
+        );
+    }
+  };
+
+  const lowStockCount = rawMaterials.filter(m => m.stock_qty <= m.min_stock).length;
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex font-sans text-slate-800">
+      {/* Sidebar Navigation */}
+      <Sidebar 
+        activePage={activePage} 
+        setActivePage={setActivePage} 
+        isOpen={sidebarOpen} 
+        setIsOpen={setSidebarOpen} 
+      />
+
+      {/* Main Container Area */}
+      <div className="flex-1 flex flex-col md:pl-64 min-w-0">
+        <Topbar 
+          activePage={activePage} 
+          setSidebarOpen={setSidebarOpen} 
+          lowStockCount={lowStockCount}
+          dbStatus={dbStatus}
+          activeTheme={activeTheme}
+          setActiveTheme={setActiveTheme}
+        />
+
+        {/* Content Viewport */}
+        <main className="flex-1 p-4 md:p-6 overflow-y-auto max-w-7xl w-full mx-auto">
+          {renderActivePageContent()}
+        </main>
+      </div>
+
+      {/* Toast Alert Popups */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 duration-200">
+          <div className={`
+            flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-xs font-semibold
+            ${toast.type === "success" 
+              ? "bg-emerald-50 text-emerald-800 border-emerald-200" 
+              : "bg-red-50 text-red-800 border-red-200"
+            }
+          `}>
+            {toast.type === "success" ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-red-600" />
+            )}
+            <span>{toast.message}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
