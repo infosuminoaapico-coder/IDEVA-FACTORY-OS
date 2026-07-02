@@ -4,6 +4,7 @@ import Topbar from "./components/Topbar";
 import Dashboard from "./components/Dashboard";
 import Customers from "./components/Customers";
 import Boms from "./components/Boms";
+import { clientGetList, clientSave, clientDelete } from "./lib/supabaseClient";
 import { 
   PrecheckPage, 
   ProductionPage, 
@@ -109,47 +110,29 @@ export default function App() {
 
   // UI Toast state
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const [dbStatus, setDbStatus] = useState<{ useMySQL: boolean; host: string; database: string; user: string } | null>(null);
+  const [dbStatus, setDbStatus] = useState<{ useMySQL: boolean; host: string; database: string; user: string } | null>({
+    useMySQL: false,
+    host: "Supabase Realtime",
+    database: "ideva-factory",
+    user: "client-direct"
+  });
 
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Helper fetcher
-  const fetchEntity = async (entity: string, action = "list") => {
-    try {
-      const res = await fetch(`/api/${entity}?action=${action}`);
-      if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-      const payload = await res.json();
-      return payload.data || [];
-    } catch (e) {
-      console.error(`Error fetching ${entity}:`, e);
-      return [];
-    }
-  };
-
-  // Refresh all tables from backend
+  // Refresh all tables from real-time database directly
   const loadAllData = async () => {
-    try {
-      const dbRes = await fetch("/api/db-status");
-      if (dbRes.ok) {
-        const statusData = await dbRes.json();
-        setDbStatus(statusData);
-      }
-    } catch (e) {
-      console.error("Error loading DB status:", e);
-    }
-
-    const custs = await fetchEntity("customers");
-    const prods = await fetchEntity("products");
-    const mats = await fetchEntity("raw_materials");
-    const recipes = await fetchEntity("bom_recipes");
-    const pos = await fetchEntity("production_orders");
-    const packOrders = await fetchEntity("packing_orders");
-    const pOrders = await fetchEntity("purchase_orders");
-    const grnLogs = await fetchEntity("grns");
-    const checks = await fetchEntity("prechecks");
+    const custs = await clientGetList("customers");
+    const prods = await clientGetList("products");
+    const mats = await clientGetList("raw_materials");
+    const recipes = await clientGetList("bom_recipes");
+    const pos = await clientGetList("production_orders");
+    const packOrders = await clientGetList("packing_orders");
+    const pOrders = await clientGetList("purchase_orders");
+    const grnLogs = await clientGetList("grns");
+    const checks = await clientGetList("prechecks");
 
     setCustomers(custs);
     setProducts(prods);
@@ -181,34 +164,26 @@ export default function App() {
   // Post / Save endpoints helpers
   const handleSave = async (entity: string, payload: any, successMsg: string) => {
     try {
-      const res = await fetch(`/api/${entity}?action=save`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (data.success) {
+      const savedId = await clientSave(entity, payload.id || 0, payload);
+      if (savedId > 0) {
         showToast(successMsg, "success");
         await loadAllData();
       } else {
-        throw new Error(data.message || "บันทึกไม่สำเร็จ");
+        throw new Error("บันทึกไม่สำเร็จ");
       }
     } catch (e: any) {
-      showToast(e.message || "การเชื่อมต่อเซิร์ฟเวอร์ล้มเหลว", "error");
+      showToast(e.message || "การเชื่อมต่อฐานข้อมูลล้มเหลว", "error");
     }
   };
 
   const handleDelete = async (entity: string, id: number, successMsg: string) => {
     try {
-      const res = await fetch(`/api/${entity}?action=delete&id=${id}`, {
-        method: "POST"
-      });
-      const data = await res.json();
-      if (data.success) {
+      const success = await clientDelete(entity, id);
+      if (success) {
         showToast(successMsg, "success");
         await loadAllData();
       } else {
-        throw new Error(data.message || "ลบไม่สำเร็จ");
+        throw new Error("ลบไม่สำเร็จ");
       }
     } catch (e: any) {
       showToast(e.message || "ไม่สามารถติดต่อฐานข้อมูลได้", "error");
