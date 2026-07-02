@@ -45,24 +45,68 @@ import {
 // ============================================================================
 interface PrecheckPageProps {
   prechecks: Precheck[];
-  onAddPrecheck: (precheck: any) => Promise<void>;
+  onAddPrecheck?: (precheck: any) => Promise<void>;
+  onSavePrecheck?: (precheck: any) => Promise<void>;
+  onDeletePrecheck?: (id: number) => Promise<void>;
 }
-export function PrecheckPage({ prechecks, onAddPrecheck }: PrecheckPageProps) {
+export function PrecheckPage({ prechecks, onAddPrecheck, onSavePrecheck, onDeletePrecheck }: PrecheckPageProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingPrecheck, setEditingPrecheck] = useState<Precheck | null>(null);
+
   const [material, setMaterial] = useState("");
   const [lot, setLot] = useState("");
   const [expiry, setExpiry] = useState("");
   const [inspector, setInspector] = useState("ดร.สุภา");
   const [result, setResult] = useState("pass");
 
+  const saveHandler = onSavePrecheck || onAddPrecheck;
+
+  const openFormModal = (pre?: Precheck) => {
+    if (pre) {
+      setEditingPrecheck(pre);
+      setMaterial(pre.material);
+      setLot(pre.lot);
+      setExpiry(pre.expiry || "");
+      setInspector(pre.inspector);
+      setResult(pre.result);
+    } else {
+      setEditingPrecheck(null);
+      setMaterial("");
+      setLot("");
+      setExpiry("");
+      setInspector("ดร.สุภา");
+      setResult("pass");
+    }
+    setIsModalOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!material.trim() || !lot.trim()) return;
-    await onAddPrecheck({ material, lot, expiry, inspector, result });
+    if (saveHandler) {
+      await saveHandler({
+        id: editingPrecheck ? editingPrecheck.id : 0,
+        material,
+        lot,
+        expiry,
+        inspector,
+        result,
+        date: editingPrecheck ? editingPrecheck.date : new Date().toISOString().slice(0, 10)
+      });
+    }
     setIsModalOpen(false);
     setMaterial("");
     setLot("");
     setExpiry("");
+  };
+
+  const handleUpdateResult = async (pre: Precheck, newResult: string) => {
+    if (saveHandler) {
+      await saveHandler({
+        ...pre,
+        result: newResult
+      });
+    }
   };
 
   return (
@@ -72,8 +116,8 @@ export function PrecheckPage({ prechecks, onAddPrecheck }: PrecheckPageProps) {
           <UserCheck className="w-4 h-4 text-emerald-600" /> รายการตรวจวิเคราะห์ก่อนผลิต (COA / QC)
         </h3>
         <button
-          onClick={() => setIsModalOpen(true)}
-          className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-all"
+          onClick={() => openFormModal()}
+          className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-all shadow-md shadow-blue-600/10 cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" /> บันทึกใบวิเคราะห์สาร
         </button>
@@ -81,26 +125,29 @@ export function PrecheckPage({ prechecks, onAddPrecheck }: PrecheckPageProps) {
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-600">
+          <table className="w-full text-left text-xs text-slate-700 border-collapse border border-slate-100">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 uppercase">
-                <th className="p-3">วันที่ตรวจ</th>
-                <th className="p-3">ชื่อสารเคมี</th>
-                <th className="p-3">Lot Number</th>
-                <th className="p-3">วันหมดอายุ</th>
-                <th className="p-3">ผู้บันทึกตรวจ</th>
-                <th className="p-3">ผลวิเคราะห์ (QC)</th>
+              <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px] uppercase">
+                <th className="p-2.5 border border-slate-200 text-center w-12">ลำดับ</th>
+                <th className="p-2.5 border border-slate-200">วันที่ตรวจ</th>
+                <th className="p-2.5 border border-slate-200">ชื่อสารเคมี</th>
+                <th className="p-2.5 border border-slate-200">Lot Number</th>
+                <th className="p-2.5 border border-slate-200">วันหมดอายุ</th>
+                <th className="p-2.5 border border-slate-200">ผู้บันทึกตรวจ</th>
+                <th className="p-2.5 border border-slate-200 text-center w-28">ผลวิเคราะห์ (QC)</th>
+                <th className="p-2.5 border border-slate-200 text-center w-80">ดำเนินการขั้นตอน / แก้ไข</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {prechecks.map((p) => (
-                <tr key={p.id}>
-                  <td className="p-3 text-slate-400">{p.date}</td>
-                  <td className="p-3 font-semibold text-slate-800">{p.material}</td>
-                  <td className="p-3 font-mono font-medium">{p.lot}</td>
-                  <td className="p-3 text-slate-500">{p.expiry || "-"}</td>
-                  <td className="p-3 font-medium text-slate-700">{p.inspector}</td>
-                  <td className="p-3">
+            <tbody>
+              {prechecks.map((p, index) => (
+                <tr key={p.id} className="odd:bg-white even:bg-slate-50/60 hover:bg-blue-50/30 transition-colors">
+                  <td className="p-2 border border-slate-200/60 text-center font-mono text-slate-400">{index + 1}</td>
+                  <td className="p-2 border border-slate-200/60 text-slate-400 font-mono">{p.date}</td>
+                  <td className="p-2 border border-slate-200/60 font-semibold text-slate-800">{p.material}</td>
+                  <td className="p-2 border border-slate-200/60 font-mono font-semibold text-slate-700">{p.lot}</td>
+                  <td className="p-2 border border-slate-200/60 text-slate-500 font-mono">{p.expiry || "-"}</td>
+                  <td className="p-2 border border-slate-200/60 font-medium text-slate-600">{p.inspector}</td>
+                  <td className="p-2 border border-slate-200/60 text-center">
                     <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                       p.result === "pass"
                         ? "bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -111,8 +158,76 @@ export function PrecheckPage({ prechecks, onAddPrecheck }: PrecheckPageProps) {
                       {p.result === "pass" ? "🟢 ผ่านเกณฑ์" : p.result === "fail" ? "🔴 ไม่ผ่านเกณฑ์" : "🟡 รอตรวจสอบ"}
                     </span>
                   </td>
+                  <td className="p-2 border border-slate-200/60 text-center">
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                      {/* Action buttons to update status */}
+                      <button
+                        onClick={() => handleUpdateResult(p, "pass")}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+                          p.result === "pass"
+                            ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                            : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                        }`}
+                      >
+                        ผ่านเกณฑ์
+                      </button>
+                      <button
+                        onClick={() => handleUpdateResult(p, "pending")}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+                          p.result === "pending"
+                            ? "bg-amber-600 text-white border-amber-600 shadow-sm"
+                            : "bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200"
+                        }`}
+                      >
+                        รอตรวจสอบ
+                      </button>
+                      <button
+                        onClick={() => handleUpdateResult(p, "fail")}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+                          p.result === "fail"
+                            ? "bg-red-600 text-white border-red-600 shadow-sm"
+                            : "bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                        }`}
+                      >
+                        ไม่ผ่าน
+                      </button>
+
+                      <div className="w-[1px] h-4 bg-slate-200 mx-0.5"></div>
+
+                      {/* Edit Button */}
+                      <button
+                        onClick={() => openFormModal(p)}
+                        className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-all"
+                        title="แก้ไขรายละเอียด"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Delete Button */}
+                      {onDeletePrecheck && (
+                        <button
+                          onClick={() => {
+                            if (confirm(`คุณต้องการลบรายงานตรวจสาร ${p.material} ล็อต ${p.lot} ใช่หรือไม่?`)) {
+                              onDeletePrecheck(p.id);
+                            }
+                          }}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded transition-all"
+                          title="ลบ"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
+              {prechecks.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center text-slate-400">
+                    ยังไม่มีข้อมูลรายงานตรวจวิเคราะห์เคมีภัณฑ์
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -120,9 +235,11 @@ export function PrecheckPage({ prechecks, onAddPrecheck }: PrecheckPageProps) {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in duration-150">
             <div className="flex items-center justify-between p-4 bg-slate-50 border-b border-slate-100">
-              <h3 className="text-xs font-bold text-slate-800">บันทึกผลตรวจสอบทางเคมี (Pre-QC)</h3>
+              <h3 className="text-xs font-bold text-slate-800">
+                {editingPrecheck ? "แก้ไขผลตรวจสอบทางเคมี (Pre-QC)" : "บันทึกผลตรวจสอบทางเคมี (Pre-QC)"}
+              </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-4 space-y-4">
@@ -155,8 +272,10 @@ export function PrecheckPage({ prechecks, onAddPrecheck }: PrecheckPageProps) {
                 </div>
               </div>
               <div className="flex justify-end gap-2 border-t pt-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-3 py-1.5 bg-white border rounded-lg text-xs">ยกเลิก</button>
-                <button type="submit" className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold">บันทึกตรวจสาร</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 font-semibold hover:bg-slate-50">ยกเลิก</button>
+                <button type="submit" className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors">
+                  {editingPrecheck ? "บันทึกการแก้ไข" : "บันทึกตรวจสาร"}
+                </button>
               </div>
             </form>
           </div>
@@ -486,37 +605,91 @@ export function ProductionPage({
 // ============================================================================
 interface PackingPageProps {
   packingOrders: PackingOrder[];
-  onAddPacking: (pk: any) => Promise<void>;
+  productionOrders?: ProductionOrder[];
+  onAddPacking?: (pk: any) => Promise<void>;
+  onSavePacking?: (pk: any) => Promise<void>;
+  onDeletePacking?: (id: number) => Promise<void>;
 }
-export function PackingPage({ packingOrders, onAddPacking }: PackingPageProps) {
+export function PackingPage({ 
+  packingOrders, 
+  productionOrders = [], 
+  onAddPacking, 
+  onSavePacking, 
+  onDeletePacking 
+}: PackingPageProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingPacking, setEditingPacking] = useState<PackingOrder | null>(null);
+
   const [code, setCode] = useState("");
-  const [poCode, setPoCode] = useState("");
+  const [poId, setPoId] = useState<number | "">("");
   const [itemName, setItemName] = useState("");
   const [quantity, setQuantity] = useState(0);
   const [unit, setUnit] = useState("ขวด");
   const [status, setStatus] = useState("pending");
 
-  const openFormModal = () => {
-    setCode(`PK-2026-${String(packingOrders.length + 1).padStart(4, "0")}`);
-    setItemName("");
-    setPoCode("PO-2026-0055");
-    setQuantity(500);
+  const saveHandler = onSavePacking || onAddPacking;
+
+  const openFormModal = (pk?: PackingOrder) => {
+    if (pk) {
+      setEditingPacking(pk);
+      setCode(pk.code);
+      setPoId(pk.production_order_id || "");
+      setItemName(pk.item_name);
+      setQuantity(pk.quantity);
+      setUnit(pk.unit || "ขวด");
+      setStatus(pk.status || "pending");
+    } else {
+      setEditingPacking(null);
+      setCode(`PK-2026-${String(packingOrders.length + 1).padStart(4, "0")}`);
+      setPoId(productionOrders.length > 0 ? productionOrders[0].id : "");
+      setItemName("");
+      setQuantity(500);
+      setUnit("ขวด");
+      setStatus("pending");
+    }
     setIsModalOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!itemName.trim() || !quantity) return;
-    await onAddPacking({
-      code,
-      production_order_id: 1, // linked
-      item_name: itemName,
-      quantity,
-      unit,
-      status
-    });
+    if (saveHandler) {
+      await saveHandler({
+        id: editingPacking ? editingPacking.id : 0,
+        code,
+        production_order_id: poId ? Number(poId) : 1,
+        item_name: itemName,
+        quantity,
+        unit,
+        status
+      });
+    }
     setIsModalOpen(false);
+  };
+
+  const handleUpdateStatus = async (pk: PackingOrder, newStatus: string) => {
+    if (saveHandler) {
+      await saveHandler({
+        ...pk,
+        status: newStatus
+      });
+    }
+  };
+
+  const getPoCode = (pId: number) => {
+    const po = productionOrders.find(p => p.id === pId);
+    return po ? po.code : `PO-2026-005${pId + 3}`;
+  };
+
+  const getStatusBadge = (s: string) => {
+    switch (s) {
+      case "done":
+        return <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-[10px] font-bold">🟢 เสร็จสิ้น</span>;
+      case "running":
+        return <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full text-[10px] font-bold animate-pulse">🔵 กำลังบรรจุ</span>;
+      default:
+        return <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-0.5 rounded-full text-[10px] font-bold">🟡 รอดำเนินการ</span>;
+    }
   };
 
   return (
@@ -525,45 +698,109 @@ export function PackingPage({ packingOrders, onAddPacking }: PackingPageProps) {
         <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
           <Boxes className="w-4 h-4 text-indigo-600" /> ตารางสั่งบรรจุขวดและหีบห่อ (Packaging Lines)
         </h3>
-        <button onClick={openFormModal} className="px-3.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold flex items-center gap-1">
+        <button 
+          onClick={() => openFormModal()} 
+          className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all shadow-md shadow-blue-600/10 cursor-pointer"
+        >
           <Plus className="w-3.5 h-3.5" /> ออกใบสั่งบรรจุ
         </button>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-600">
+          <table className="w-full text-left text-xs text-slate-700 border-collapse border border-slate-100">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 uppercase">
-                <th className="p-3">รหัสใบสั่งบรรจุ</th>
-                <th className="p-3">เลขอ้างอิงใบผลิต</th>
-                <th className="p-3">ชื่อสินค้า/ขวดบรรจุ</th>
-                <th className="p-3 text-right">จำนวนผลิตบรรจุ</th>
-                <th className="p-3 text-center">หน่วย</th>
-                <th className="p-3">สถานะไลน์บรรจุ</th>
+              <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px] uppercase">
+                <th className="p-2.5 border border-slate-200 text-center w-12">ลำดับ</th>
+                <th className="p-2.5 border border-slate-200">รหัสใบสั่งบรรจุ</th>
+                <th className="p-2.5 border border-slate-200">เลขอ้างอิงใบผลิต</th>
+                <th className="p-2.5 border border-slate-200">ชื่อสินค้า/ขวดบรรจุ</th>
+                <th className="p-2.5 border border-slate-200 text-right">จำนวนผลิตบรรจุ</th>
+                <th className="p-2.5 border border-slate-200 text-center">หน่วย</th>
+                <th className="p-2.5 border border-slate-200 text-center">สถานะไลน์บรรจุ</th>
+                <th className="p-2.5 border border-slate-200 text-center w-80">ดำเนินการขั้นตอน / แก้ไข</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-sans">
-              {packingOrders.map(p => (
-                <tr key={p.id}>
-                  <td className="p-3 font-bold font-mono text-slate-800">{p.code}</td>
-                  <td className="p-3 font-mono text-slate-500">PO-2026-005{p.production_order_id + 3}</td>
-                  <td className="p-3 font-semibold text-slate-800">{p.item_name}</td>
-                  <td className="p-3 text-right font-bold font-mono text-blue-600">{p.quantity.toLocaleString()}</td>
-                  <td className="p-3 text-center text-slate-500">{p.unit}</td>
-                  <td className="p-3">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                      p.status === "done" 
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        : p.status === "running"
-                          ? "bg-blue-50 text-blue-700 border border-blue-200 animate-pulse"
-                          : "bg-slate-50 text-slate-600 border border-slate-200"
-                    }`}>
-                      {p.status === "done" ? "เสร็จสิ้น" : p.status === "running" ? "กำลังบรรจุ" : "รอดำเนินการ"}
-                    </span>
+            <tbody>
+              {packingOrders.map((p, index) => (
+                <tr key={p.id} className="odd:bg-white even:bg-slate-50/60 hover:bg-blue-50/30 transition-colors">
+                  <td className="p-2 border border-slate-200/60 text-center font-mono text-slate-400">{index + 1}</td>
+                  <td className="p-2 border border-slate-200/60 font-bold font-mono text-slate-800">{p.code}</td>
+                  <td className="p-2 border border-slate-200/60 font-mono text-slate-500">{getPoCode(p.production_order_id)}</td>
+                  <td className="p-2 border border-slate-200/60 font-semibold text-slate-800">{p.item_name}</td>
+                  <td className="p-2 border border-slate-200/60 text-right font-bold font-mono text-blue-600">{p.quantity.toLocaleString()}</td>
+                  <td className="p-2 border border-slate-200/60 text-center text-slate-500 font-medium">{p.unit}</td>
+                  <td className="p-2 border border-slate-200/60 text-center">{getStatusBadge(p.status)}</td>
+                  <td className="p-2 border border-slate-200/60 text-center">
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                      {/* Status update buttons */}
+                      <button
+                        onClick={() => handleUpdateStatus(p, "pending")}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+                          p.status === "pending"
+                            ? "bg-amber-600 text-white border-amber-600 shadow-sm"
+                            : "bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200"
+                        }`}
+                      >
+                        รอดำเนินการ
+                      </button>
+                      <button
+                        onClick={() => handleUpdateStatus(p, "running")}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+                          p.status === "running"
+                            ? "bg-blue-600 text-white border-blue-600 shadow-sm animate-pulse"
+                            : "bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                        }`}
+                      >
+                        กำลังบรรจุ
+                      </button>
+                      <button
+                        onClick={() => handleUpdateStatus(p, "done")}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+                          p.status === "done"
+                            ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                            : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                        }`}
+                      >
+                        เสร็จสิ้น
+                      </button>
+
+                      <div className="w-[1px] h-4 bg-slate-200 mx-0.5"></div>
+
+                      {/* Edit Button */}
+                      <button
+                        onClick={() => openFormModal(p)}
+                        className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-all"
+                        title="แก้ไขรายละเอียด"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Delete Button */}
+                      {onDeletePacking && (
+                        <button
+                          onClick={() => {
+                            if (confirm(`คุณต้องการลบใบสั่งบรรจุ ${p.code} ใช่หรือไม่?`)) {
+                              onDeletePacking(p.id);
+                            }
+                          }}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded transition-all"
+                          title="ลบ"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
+              {packingOrders.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center text-slate-400">
+                    ยังไม่มีข้อมูลใบสั่งบรรจุผลิตภัณฑ์
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -571,20 +808,44 @@ export function PackingPage({ packingOrders, onAddPacking }: PackingPageProps) {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in duration-150">
             <div className="flex items-center justify-between p-4 bg-slate-50 border-b border-slate-100">
-              <h3 className="text-xs font-bold text-slate-800">ออกใบสั่งทำงานไลนบรรจุภัณฑ์</h3>
+              <h3 className="text-xs font-bold text-slate-800">
+                {editingPacking ? `แก้ไขใบสั่งทำงานไลน์บรรจุ (${editingPacking.code})` : "ออกใบสั่งทำงานไลน์บรรจุภัณฑ์"}
+              </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">รหัสใบสั่ง</label>
-                  <input type="text" value={code} readonly className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-slate-50 font-mono font-bold" />
+                  <input type="text" value={code} readOnly className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-slate-50 font-mono font-bold" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">อ้างอิงใบสั่งผลิต (PO)</label>
-                  <input type="text" value={poCode} onChange={(e) => setPoCode(e.target.value)} required className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono font-bold" />
+                  {productionOrders.length > 0 ? (
+                    <select
+                      value={poId}
+                      onChange={(e) => setPoId(e.target.value ? Number(e.target.value) : "")}
+                      required
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white font-mono"
+                    >
+                      <option value="">-- เลือกใบสั่งผลิต --</option>
+                      {productionOrders.map(po => (
+                        <option key={po.id} value={po.id}>
+                          {po.code} - {po.product_name || "ไม่ได้ระบุ"}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input 
+                      type="number" 
+                      value={poId || ""} 
+                      onChange={(e) => setPoId(e.target.value ? Number(e.target.value) : "")} 
+                      required 
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono font-bold" 
+                    />
+                  )}
                 </div>
               </div>
               <div>
@@ -610,8 +871,10 @@ export function PackingPage({ packingOrders, onAddPacking }: PackingPageProps) {
                 </select>
               </div>
               <div className="flex justify-end gap-2 border-t pt-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-3 py-1.5 bg-white border rounded-lg text-xs">ยกเลิก</button>
-                <button type="submit" className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold">เปิดใบงานบรรจุ</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 font-semibold hover:bg-slate-50">ยกเลิก</button>
+                <button type="submit" className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors">
+                  {editingPacking ? "บันทึกการแก้ไข" : "เปิดใบงานบรรจุ"}
+                </button>
               </div>
             </form>
           </div>
@@ -627,22 +890,50 @@ export function PackingPage({ packingOrders, onAddPacking }: PackingPageProps) {
 interface PurchasePageProps {
   purchaseOrders: PurchaseOrder[];
   rawMaterials: RawMaterial[];
-  onAddPurchase: (po: any) => Promise<void>;
+  onAddPurchase?: (po: any) => Promise<void>;
+  onSavePurchase?: (po: any) => Promise<void>;
+  onDeletePurchase?: (id: number) => Promise<void>;
+  onReceivePurchase?: (po: PurchaseOrder) => Promise<void>;
 }
-export function PurchasePage({ purchaseOrders, rawMaterials, onAddPurchase }: PurchasePageProps) {
+export function PurchasePage({ 
+  purchaseOrders, 
+  rawMaterials, 
+  onAddPurchase,
+  onSavePurchase,
+  onDeletePurchase,
+  onReceivePurchase
+}: PurchasePageProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingPurchase, setEditingPurchase] = useState<PurchaseOrder | null>(null);
+
   const [code, setCode] = useState("");
   const [supplier, setSupplier] = useState("");
   const [materialId, setMaterialId] = useState<number | "">("");
   const [quantity, setQuantity] = useState(0);
   const [price, setPrice] = useState(0);
+  const [status, setStatus] = useState("pending");
 
-  const openFormModal = () => {
-    setCode(`PRM-2026-${String(purchaseOrders.length + 22).padStart(4, "0")}`);
-    setSupplier("");
-    setMaterialId("");
-    setQuantity(100);
-    setPrice(50);
+  const saveHandler = onSavePurchase || onAddPurchase;
+
+  const openFormModal = (po?: PurchaseOrder) => {
+    if (po) {
+      setEditingPurchase(po);
+      setCode(po.code);
+      setSupplier(po.supplier);
+      const firstItem = po.items?.[0] || { raw_material_id: "", quantity: po.qty || 100, unit_price: po.price || 50 };
+      setMaterialId(firstItem.raw_material_id || "");
+      setQuantity(firstItem.quantity || po.qty || 100);
+      setPrice(firstItem.unit_price || po.price || 50);
+      setStatus(po.status || "pending");
+    } else {
+      setEditingPurchase(null);
+      setCode(`PRM-2026-${String(purchaseOrders.length + 22).padStart(4, "0")}`);
+      setSupplier("");
+      setMaterialId(rawMaterials.length > 0 ? rawMaterials[0].id : "");
+      setQuantity(100);
+      setPrice(50);
+      setStatus("pending");
+    }
     setIsModalOpen(true);
   };
 
@@ -651,25 +942,40 @@ export function PurchasePage({ purchaseOrders, rawMaterials, onAddPurchase }: Pu
     if (!supplier.trim() || !materialId || !quantity) return;
     const selectedMat = rawMaterials.find(rm => rm.id === Number(materialId));
     
-    await onAddPurchase({
-      code,
-      supplier,
-      order_date: new Date().toISOString().slice(0, 10),
-      status: "pending",
-      total_amount: quantity * price,
-      items: [
-        {
-          raw_material_id: Number(materialId),
-          item_name: selectedMat ? selectedMat.name : "",
-          quantity,
-          unit: selectedMat ? selectedMat.unit : "ลิตร",
-          unit_price: price,
-          subtotal: quantity * price
-        }
-      ]
-    });
+    if (saveHandler) {
+      await saveHandler({
+        id: editingPurchase ? editingPurchase.id : 0,
+        code,
+        supplier,
+        order_date: editingPurchase ? editingPurchase.order_date : new Date().toISOString().slice(0, 10),
+        status,
+        total_amount: quantity * price,
+        items: [
+          {
+            raw_material_id: Number(materialId),
+            item_name: selectedMat ? selectedMat.name : "",
+            quantity,
+            unit: selectedMat ? selectedMat.unit : "ลิตร",
+            unit_price: price,
+            subtotal: quantity * price
+          }
+        ]
+      });
+    }
     setIsModalOpen(false);
   };
+
+  // Sort purchase orders: "received" (เข้าคลัง) goes to the bottom, everything else to the top.
+  const sortedPurchaseOrders = [...purchaseOrders].sort((a, b) => {
+    const aReceived = a.status === "received" ? 1 : 0;
+    const bReceived = b.status === "received" ? 1 : 0;
+    
+    if (aReceived !== bReceived) {
+      return aReceived - bReceived; // 0 (unreceived) first, 1 (received) last
+    }
+    
+    return b.id - a.id; // Newest first for secondary sorting
+  });
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
@@ -677,50 +983,118 @@ export function PurchasePage({ purchaseOrders, rawMaterials, onAddPurchase }: Pu
         <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
           <ShoppingCart className="w-4 h-4 text-indigo-600" /> รายการสั่งซื้อเคมีภัณฑ์และส่วนผสม
         </h3>
-        <button onClick={openFormModal} className="px-3.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold flex items-center gap-1">
+        <button 
+          onClick={() => openFormModal()} 
+          className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all shadow-md shadow-blue-600/10 cursor-pointer"
+        >
           <Plus className="w-3.5 h-3.5" /> บันทึกใบสั่งซื้อใหม่
         </button>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-600">
+          <table className="w-full text-left text-xs text-slate-700 border-collapse border border-slate-100">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 uppercase">
-                <th className="p-3">เลขที่ใบสั่งซื้อ</th>
-                <th className="p-3">ผู้จำหน่าย (Supplier)</th>
-                <th className="p-3">วัตถุดิบเคมีที่ซื้อ</th>
-                <th className="p-3 text-right">จำนวนซื้อ</th>
-                <th className="p-3 text-right">ยอดเงินรวม</th>
-                <th className="p-3">วันที่เปิดใบซื้อ</th>
-                <th className="p-3">สถานะตรวจรับเข้าคลัง</th>
+              <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px] uppercase">
+                <th className="p-2.5 border border-slate-200 text-center w-12">ลำดับ</th>
+                <th className="p-2.5 border border-slate-200">เลขที่ใบสั่งซื้อ</th>
+                <th className="p-2.5 border border-slate-200">ผู้จำหน่าย (Supplier)</th>
+                <th className="p-2.5 border border-slate-200">วัตถุดิบเคมีที่ซื้อ</th>
+                <th className="p-2.5 border border-slate-200 text-right">จำนวนซื้อ</th>
+                <th className="p-2.5 border border-slate-200 text-right">ยอดเงินรวม</th>
+                <th className="p-2.5 border border-slate-200 text-center w-24">วันที่สั่งซื้อ</th>
+                <th className="p-2.5 border border-slate-200 text-center w-36">สถานะตรวจรับเข้าคลัง</th>
+                <th className="p-2.5 border border-slate-200 text-center w-[260px]">ดำเนินการขั้นตอน / แก้ไข</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-sans">
-              {purchaseOrders.map(p => {
+            <tbody>
+              {sortedPurchaseOrders.map((p, index) => {
                 const item = p.items?.[0] || { item_name: "เคมีภัณฑ์ย่อย", quantity: p.qty || 0, unit: "หน่วย", subtotal: p.total_amount || 0 };
                 return (
-                  <tr key={p.id}>
-                    <td className="p-3 font-bold font-mono text-slate-800">{p.code}</td>
-                    <td className="p-3 font-semibold text-slate-800">{p.supplier}</td>
-                    <td className="p-3 text-slate-600 font-medium">{item.item_name}</td>
-                    <td className="p-3 text-right font-semibold font-mono">{item.quantity.toLocaleString()} {item.unit}</td>
-                    <td className="p-3 text-right font-bold font-mono text-indigo-600">฿{p.total_amount.toLocaleString()}</td>
-                    <td className="p-3 text-slate-400">{p.order_date}</td>
-                    <td className="p-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  <tr key={p.id} className="odd:bg-white even:bg-slate-50/60 hover:bg-blue-50/30 transition-colors">
+                    <td className="p-2.5 border border-slate-200 text-center font-mono text-slate-400">{index + 1}</td>
+                    <td className="p-2.5 border border-slate-200 font-bold font-mono text-slate-800">{p.code}</td>
+                    <td className="p-2.5 border border-slate-200 font-semibold text-slate-800">{p.supplier}</td>
+                    <td className="p-2.5 border border-slate-200 text-slate-600 font-medium">{item.item_name}</td>
+                    <td className="p-2.5 border border-slate-200 text-right font-semibold font-mono text-slate-700">{item.quantity.toLocaleString()} {item.unit}</td>
+                    <td className="p-2.5 border border-slate-200 text-right font-bold font-mono text-indigo-600">฿{p.total_amount.toLocaleString()}</td>
+                    <td className="p-2.5 border border-slate-200 text-slate-400 font-mono text-center">{p.order_date}</td>
+                    <td className="p-2.5 border border-slate-200 text-center">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                         p.status === "received"
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                           : p.status === "transit"
                             ? "bg-blue-50 text-blue-700 border border-blue-200"
                             : "bg-amber-50 text-amber-700 border border-amber-200 animate-pulse"
                       }`}>
-                        {p.status === "received" ? "รับสินค้าเข้าสต็อกแล้ว" : p.status === "transit" ? "อยู่ระหว่างจัดส่ง" : "รอกลุ่มรับของ (GRN)"}
+                        {p.status === "received" ? "🟢 เข้าคลังแล้ว" : p.status === "transit" ? "🔵 อยู่ระหว่างจัดส่ง" : "🟡 รอกลุ่มรับของ"}
                       </span>
+                    </td>
+                    <td className="p-2.5 border border-slate-200 text-center">
+                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                        {/* Quick Action: Receive goods into warehouse */}
+                        {p.status !== "received" && onReceivePurchase && (
+                          <button
+                            onClick={async () => {
+                              if (confirm(`คุณต้องการยืนยันการรับสินค้า ${item.item_name} จำนวน ${item.quantity.toLocaleString()} ${item.unit} เข้าคลังสินค้าและเพิ่มสต็อกใช่หรือไม่?`)) {
+                                await onReceivePurchase(p);
+                              }
+                            }}
+                            className="px-2.5 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold flex items-center gap-0.5 transition-all shadow-sm shadow-emerald-600/10 cursor-pointer"
+                          >
+                            📥 รับเข้าคลังสินค้า
+                          </button>
+                        )}
+                        
+                        {/* Status controls */}
+                        {p.status === "pending" && onSavePurchase && (
+                          <button
+                            onClick={async () => {
+                              await onSavePurchase({ ...p, status: "transit" });
+                            }}
+                            className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-[10px] font-bold transition-all cursor-pointer"
+                          >
+                            ส่งสินค้า
+                          </button>
+                        )}
+
+                        <div className="w-[1px] h-4 bg-slate-200 mx-0.5"></div>
+
+                        {/* Edit Button */}
+                        <button
+                          onClick={() => openFormModal(p)}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-all"
+                          title="แก้ไขรายละเอียด"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Delete Button */}
+                        {onDeletePurchase && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`คุณต้องการลบใบสั่งซื้อ ${p.code} ใช่หรือไม่?`)) {
+                                onDeletePurchase(p.id);
+                              }
+                            }}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded transition-all"
+                            title="ลบใบงาน"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
               })}
+              {purchaseOrders.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="p-8 text-center text-slate-400">
+                    ยังไม่มีข้อมูลใบสั่งซื้อเคมีภัณฑ์และส่วนผสม
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -730,14 +1104,16 @@ export function PurchasePage({ purchaseOrders, rawMaterials, onAddPurchase }: Pu
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in duration-100">
             <div className="flex items-center justify-between p-4 bg-slate-50 border-b border-slate-100">
-              <h3 className="text-xs font-bold text-slate-800">สร้างใบส่งสั่งซื้อสารตั้งต้น (PO Chemicals)</h3>
+              <h3 className="text-xs font-bold text-slate-800">
+                {editingPurchase ? `แก้ไขใบส่งสั่งซื้อเคมีภัณฑ์ (${editingPurchase.code})` : "สร้างใบส่งสั่งซื้อสารตั้งต้น (PO Chemicals)"}
+              </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">เลข PO จัดซื้อ</label>
-                  <input type="text" value={code} readonly className="w-full px-3 py-1.5 border border-slate-200 bg-slate-50 font-mono font-bold text-xs" />
+                  <input type="text" value={code} readOnly className="w-full px-3 py-1.5 border border-slate-200 bg-slate-50 font-mono font-bold text-xs" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">บริษัทผู้ขาย (Supplier)</label>
@@ -763,9 +1139,21 @@ export function PurchasePage({ purchaseOrders, rawMaterials, onAddPurchase }: Pu
                   <input type="number" value={price || ""} onChange={(e) => setPrice(parseFloat(e.target.value) || 0)} required className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono text-right" />
                 </div>
               </div>
+              {editingPurchase && (
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">สถานะ</label>
+                  <select value={status} onChange={(e) => setStatus(e.target.value)} required className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white">
+                    <option value="pending">รอกลุ่มรับของ</option>
+                    <option value="transit">อยู่ระหว่างจัดส่ง</option>
+                    <option value="received">รับเข้าสต็อกแล้ว</option>
+                  </select>
+                </div>
+              )}
               <div className="flex justify-end gap-2 border-t pt-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-3 py-1.5 bg-white border rounded-lg text-xs">ยกเลิก</button>
-                <button type="submit" className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold">เปิดใบจัดซื้อเคมี</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 font-semibold hover:bg-slate-50">ยกเลิก</button>
+                <button type="submit" className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors">
+                  {editingPurchase ? "บันทึกการแก้ไข" : "เปิดใบจัดซื้อเคมี"}
+                </button>
               </div>
             </form>
           </div>

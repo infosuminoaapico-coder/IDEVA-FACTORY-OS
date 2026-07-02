@@ -233,7 +233,8 @@ export default function App() {
         return (
           <PrecheckPage 
             prechecks={prechecks}
-            onAddPrecheck={async (p) => handleSave("prechecks", p, "บันทึกใบวิเคราะห์สารเคมีเรียบร้อยแล้ว!")}
+            onSavePrecheck={async (p) => handleSave("prechecks", p, "บันทึกผลตรวจสอบสารเคมีเรียบร้อยแล้ว!")}
+            onDeletePrecheck={async (id) => handleDelete("prechecks", id, "ลบใบวิเคราะห์สารเคมีเรียบร้อยแล้ว!")}
           />
         );
       case "production":
@@ -250,7 +251,9 @@ export default function App() {
         return (
           <PackingPage 
             packingOrders={packingOrders}
-            onAddPacking={async (pk) => handleSave("packing_orders", pk, "บันทึกคิวไลน์บรรจุขวดสำเร็จ!")}
+            productionOrders={productionOrders}
+            onSavePacking={async (pk) => handleSave("packing_orders", pk, "บันทึกคิวไลน์บรรจุขวดสำเร็จ!")}
+            onDeletePacking={async (id) => handleDelete("packing_orders", id, "ลบคิวไลน์บรรจุขวดเรียบร้อยแล้ว!")}
           />
         );
       case "purchase":
@@ -259,6 +262,55 @@ export default function App() {
             purchaseOrders={purchaseOrders}
             rawMaterials={rawMaterials}
             onAddPurchase={async (po) => handleSave("purchase_orders", po, "ออกใบสั่งสั่งซื้อเคมีภัณฑ์เสร็จสิ้น!")}
+            onSavePurchase={async (po) => handleSave("purchase_orders", po, "บันทึกแก้ไขใบสั่งซื้อเรียบร้อยแล้ว!")}
+            onDeletePurchase={async (id) => handleDelete("purchase_orders", id, "ลบใบสั่งซื้อเคมีภัณฑ์เรียบร้อยแล้ว!")}
+            onReceivePurchase={async (po) => {
+              try {
+                // 1. Mark PO as received
+                const updatedPo = { ...po, status: "received" };
+                await clientSave("purchase_orders", po.id, updatedPo);
+                
+                // 2. Add raw materials to stock
+                if (po.items && po.items.length > 0) {
+                  for (const item of po.items) {
+                    const matId = item.raw_material_id;
+                    const qty = item.quantity;
+                    if (matId && qty) {
+                      const mat = rawMaterials.find(rm => rm.id === matId);
+                      if (mat) {
+                        const updatedMat = { ...mat, stock_qty: parseFloat(String(mat.stock_qty || 0)) + parseFloat(String(qty)) };
+                        await clientSave("raw_materials", mat.id, updatedMat);
+                      }
+                    }
+                  }
+                }
+
+                // 3. Create a GRN record automatically
+                if (po.items && po.items.length > 0) {
+                  for (const item of po.items) {
+                    const grnCode = `GRN-2026-${String(grns.length + 20).padStart(4, "0")}`;
+                    const lotNum = `L${new Date().toISOString().slice(2, 10).replace(/-/g, "")}-AUTO`;
+                    const expDate = new Date(Date.now() + 365*2*24*60*60*1000).toISOString().slice(0, 10);
+                    
+                    await clientSave("grns", 0, {
+                      code: grnCode,
+                      purchase_order_id: po.id,
+                      raw_material_id: item.raw_material_id,
+                      lot_number: lotNum,
+                      expiry_date: expDate,
+                      received_qty: item.quantity,
+                      receiver: "ระบบอัตโนมัติ (รับเข้าคลัง)",
+                      receive_date: new Date().toISOString().slice(0, 10)
+                    });
+                  }
+                }
+                
+                showToast("รับเคมีภัณฑ์เข้าคลังและเพิ่มสต็อกเรียบร้อยแล้ว!", "success");
+                await loadAllData();
+              } catch (e: any) {
+                showToast(e.message || "เกิดข้อผิดพลาดในการรับของเข้าสต็อก", "error");
+              }
+            }}
           />
         );
       case "grn":
