@@ -175,27 +175,29 @@ export default function Boms({
       {/* Formulas Table */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-600">
+          <table className="w-full text-left text-xs text-slate-700 border-collapse border border-slate-100">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 uppercase tracking-wider">
-                <th className="p-3.5">รหัสสินค้า</th>
-                <th className="p-3.5">ชื่อสินค้าที่ผลิต</th>
-                <th className="p-3.5">เวอร์ชันสูตร</th>
-                <th className="p-3.5 text-blue-800 font-bold bg-blue-50/20">ผลิตไปแล้ว (Already Produced)</th>
-                <th className="p-3.5">สถานะ</th>
-                <th className="p-3.5 text-right">การจัดการ</th>
+              <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px] uppercase">
+                <th className="p-2.5 border border-slate-200 text-center w-12">ลำดับ</th>
+                <th className="p-2.5 border border-slate-200">รหัสสินค้า</th>
+                <th className="p-2.5 border border-slate-200">ชื่อสินค้าที่ผลิต</th>
+                <th className="p-2.5 border border-slate-200 text-center w-28">เวอร์ชันสูตร</th>
+                <th className="p-2.5 border border-slate-200 text-right bg-blue-50/20 w-44">ผลิตไปแล้ว (Already Produced)</th>
+                <th className="p-2.5 border border-slate-200 text-center w-28">สถานะ</th>
+                <th className="p-2.5 border border-slate-200 text-center w-48">การจัดการ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((b) => {
+            <tbody>
+              {filtered.map((b, index) => {
                 // Production stats
                 const stats = getProductProductionStats(b.product_id);
                 const hasProduced = stats.qty > 0;
                 
                 return (
-                  <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-3.5 font-bold font-mono text-slate-800">{b.product_code || "-"}</td>
-                    <td className="p-3.5">
+                  <tr key={b.id} className="odd:bg-white even:bg-slate-50/60 hover:bg-blue-50/30 transition-colors">
+                    <td className="p-2 border border-slate-200/60 text-center font-mono text-slate-400">{index + 1}</td>
+                    <td className="p-2 border border-slate-200/60 font-bold font-mono text-slate-800">{b.product_code || "-"}</td>
+                    <td className="p-2 border border-slate-200/60">
                       <div>
                         <span className="font-semibold text-slate-800">{b.product_name || "-"}</span>
                         {b.notes && (
@@ -203,14 +205,14 @@ export default function Boms({
                         )}
                       </div>
                     </td>
-                    <td className="p-3.5 font-semibold font-mono text-slate-500">
-                      <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                    <td className="p-2 border border-slate-200/60 text-center font-semibold font-mono text-slate-500">
+                      <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md text-[11px]">
                         {b.version}
                       </span>
                     </td>
-                    <td className="p-3.5 font-semibold bg-blue-50/10">
+                    <td className="p-2 border border-slate-200/60 text-right font-semibold bg-blue-50/10">
                       {hasProduced ? (
-                        <div className="flex flex-col">
+                        <div className="flex flex-col items-end">
                           <span className="text-blue-700 font-bold font-mono">
                             {stats.qty.toLocaleString()} {b.product_type === "Powder" ? "กก." : "ลิตร"}
                           </span>
@@ -222,7 +224,7 @@ export default function Boms({
                         <span className="text-slate-400 font-normal text-[11px] font-sans">ยังไม่มีประวัติการผลิต</span>
                       )}
                     </td>
-                    <td className="p-3.5">
+                    <td className="p-2 border border-slate-200/60 text-center">
                       <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                         b.status === "active"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -233,8 +235,8 @@ export default function Boms({
                         {b.status === "active" ? "เปิดใช้งาน" : b.status === "test" ? "ทดสอบ" : "ปิดใช้งาน"}
                       </span>
                     </td>
-                    <td className="p-3.5">
-                      <div className="flex items-center justify-end gap-1">
+                    <td className="p-2 border border-slate-200/60 text-center">
+                      <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => handleViewDetails(b)}
                           className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all"
@@ -269,7 +271,7 @@ export default function Boms({
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-400">
+                  <td colSpan={7} className="p-8 text-center text-slate-400">
                     ไม่พบสูตรการผลิตที่ค้นหา
                   </td>
                 </tr>

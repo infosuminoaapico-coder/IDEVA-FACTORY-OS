@@ -1,13 +1,21 @@
 import React from "react";
-import { Bell, Search, Menu, Calendar, Clock } from "lucide-react";
+import { Bell, Menu, Calendar, Clock, AlertTriangle, XCircle, CheckCircle, Info } from "lucide-react";
+
+interface NotificationItem {
+  id: string;
+  type: "warning" | "info" | "error" | "success";
+  title: string;
+  description: string;
+  page: string;
+}
 
 interface TopbarProps {
   activePage: string;
   setSidebarOpen: (open: boolean) => void;
   lowStockCount: number;
   dbStatus: any;
-  activeTheme?: string;
-  setActiveTheme?: (theme: string) => void;
+  notifications?: NotificationItem[];
+  onNavigate?: (page: string) => void;
 }
 
 export default function Topbar({ 
@@ -15,8 +23,8 @@ export default function Topbar({
   setSidebarOpen, 
   lowStockCount, 
   dbStatus,
-  activeTheme,
-  setActiveTheme 
+  notifications = [],
+  onNavigate
 }: TopbarProps) {
   const pageTitles: Record<string, string> = {
     dashboard: "แดชบอร์ดภาพรวม",
@@ -33,6 +41,19 @@ export default function Topbar({
 
   const [time, setTime] = React.useState("");
   const [date, setDate] = React.useState("");
+  const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
+
+  // Close notifications dropdown on click outside
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   React.useEffect(() => {
     const updateTime = () => {
@@ -73,22 +94,10 @@ export default function Topbar({
 
       <div className="flex items-center gap-3">
         {dbStatus ? (
-          dbStatus.useSupabase ? (
-            <div className="hidden md:flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-full text-[10px] font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
-              Supabase Connected ⚡
-            </div>
-          ) : dbStatus.useMySQL ? (
-            <div className="hidden md:flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-full text-[10px] font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-              MySQL: เชื่อมต่อแล้ว ({dbStatus.user}@{dbStatus.host})
-            </div>
-          ) : (
-            <div className="hidden md:flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 px-2.5 py-1 rounded-full text-[10px] font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse"></span>
-              ระบบออฟไลน์ (In-Memory Fallback)
-            </div>
-          )
+          <div className="hidden md:flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-full text-[10px] font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+            เชื่อมต่อ Supabase Realtime แล้ว ⚡
+          </div>
         ) : (
           <div className="hidden md:flex items-center gap-1.5 bg-slate-50 border border-slate-200 text-slate-500 px-2.5 py-1 rounded-full text-[10px] font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse"></span>
@@ -103,48 +112,76 @@ export default function Topbar({
           </div>
         )}
 
-        {/* Pastel Theme Selector (โทนอ่อน บาง ๆ) */}
-        <div className="flex items-center gap-1 bg-slate-100/70 border border-slate-200 px-2 py-1 rounded-full text-xs">
-          <span className="text-[10px] text-slate-400 font-medium px-1 hidden lg:inline">ธีมพาสเทล:</span>
-          <div className="flex items-center gap-1">
-            {[
-              { id: "blue", name: "ฟ้า", color: "#60a5fa" },
-              { id: "sage", name: "เขียว", color: "#34d399" },
-              { id: "rose", name: "ชมพู", color: "#fb7185" },
-              { id: "lavender", name: "ม่วง", color: "#a78bfa" },
-              { id: "amber", name: "พีช", color: "#fbbf24" }
-            ].map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setActiveTheme?.(t.id)}
-                className={`w-3.5 h-3.5 rounded-full border transition-all duration-200 hover:scale-110 ${
-                  activeTheme === t.id
-                    ? "ring-2 ring-slate-400 border-white"
-                    : "border-transparent"
-                }`}
-                style={{ backgroundColor: t.color }}
-                title={t.name}
-              />
-            ))}
-          </div>
-        </div>
+        {/* Dynamic Notification Bell */}
+        <div className="relative" ref={dropdownRef}>
+          <button 
+            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            className="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all"
+            title="รายการแจ้งเตือน"
+          >
+            <Bell className="w-4 h-4" />
+            {notifications.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center ring-2 ring-white animate-bounce">
+                {notifications.length}
+              </span>
+            )}
+          </button>
 
-        <button className="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all">
-          <Bell className="w-4 h-4" />
-          {lowStockCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
+          {isNotificationsOpen && (
+            <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800">รายการแจ้งเตือนระบบ ({notifications.length})</span>
+                {notifications.length > 0 && (
+                  <span className="text-[9px] bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded-full">เรียลไทม์</span>
+                )}
+              </div>
+              <div className="max-h-72 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-slate-400 text-xs">
+                    ไม่มีแจ้งเตือนหรือรายการที่ต้องจัดการในขณะนี้
+                  </div>
+                ) : (
+                  notifications.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        onNavigate?.(item.page);
+                        setIsNotificationsOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-50 flex gap-3 transition-colors last:border-0"
+                    >
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                        item.type === "warning" ? "bg-amber-50 text-amber-600" :
+                        item.type === "error" ? "bg-red-50 text-red-600" :
+                        item.type === "success" ? "bg-emerald-50 text-emerald-600" :
+                        "bg-blue-50 text-blue-600"
+                      }`}>
+                        {item.type === "warning" && <AlertTriangle className="w-4.5 h-4.5" />}
+                        {item.type === "error" && <XCircle className="w-4.5 h-4.5" />}
+                        {item.type === "success" && <CheckCircle className="w-4.5 h-4.5" />}
+                        {item.type === "info" && <Info className="w-4.5 h-4.5" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-slate-700 truncate">{item.title}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">{item.description}</p>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
           )}
-        </button>
+        </div>
 
         <div className="h-6 w-[1px] bg-slate-200"></div>
 
         <div className="flex items-center gap-2">
           <div className="hidden sm:block text-right">
-            <h4 className="text-xs font-semibold text-slate-700">Somchai J.</h4>
-            <p className="text-[9px] text-slate-400">Admin Supervisor</p>
+            <h4 className="text-xs font-semibold text-slate-700 truncate max-w-[120px]" title="บริษัท ไอดีว่า กรุ๊ป จำกัด">บริษัท ไอดีว่า กรุ๊ป จำกัด</h4>
+            <p className="text-[9px] text-slate-400">ผู้ดูแลระบบคลังและสูตร</p>
           </div>
           <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm shadow-blue-200 border-2 border-white">
-            SJ
+            ไอ
           </div>
         </div>
       </div>

@@ -302,6 +302,75 @@ export default function App() {
 
   const lowStockCount = rawMaterials.filter(m => m.stock_qty <= m.min_stock).length;
 
+  // Real-time active alerts & updates
+  const notifications: {
+    id: string;
+    type: "warning" | "info" | "error" | "success";
+    title: string;
+    description: string;
+    page: string;
+  }[] = [];
+
+  // 1. Low stock raw materials
+  rawMaterials.forEach((m) => {
+    if (m.stock_qty <= m.min_stock) {
+      notifications.push({
+        id: `stock-${m.id}`,
+        type: "warning",
+        title: `วัตถุดิบต่ำกว่าเกณฑ์: ${m.name}`,
+        description: `คงเหลือ ${m.stock_qty} ${m.unit} (ขั้นต่ำ ${m.min_stock})`,
+        page: "inventory"
+      });
+    }
+  });
+
+  // 2. Running production orders
+  productionOrders.forEach((po) => {
+    if (po.status === "running") {
+      notifications.push({
+        id: `prod-${po.id}`,
+        type: "info",
+        title: `กำลังดำเนินการผลิต: ${po.code}`,
+        description: `สั่งผลิตจำนวน ${po.quantity} ${po.unit}`,
+        page: "production"
+      });
+    }
+  });
+
+  // 3. Pending purchase orders
+  purchaseOrders.forEach((po) => {
+    if (po.status === "pending") {
+      notifications.push({
+        id: `purch-${po.id}`,
+        type: "warning",
+        title: `ใบสั่งซื้อรอรับของ: ${po.code}`,
+        description: `ซัพพลายเออร์: ${po.supplier}`,
+        page: "purchase"
+      });
+    }
+  });
+
+  // 4. Failed or pending prechecks
+  prechecks.forEach((c) => {
+    if (c.result === "fail") {
+      notifications.push({
+        id: `check-${c.id}`,
+        type: "error",
+        title: `ผลตรวจไม่ผ่าน: ${c.material}`,
+        description: `ล็อต: ${c.lot} โดยผู้ตรวจ ${c.inspector}`,
+        page: "precheck"
+      });
+    } else if (c.result === "pending") {
+      notifications.push({
+        id: `check-pend-${c.id}`,
+        type: "info",
+        title: `รอตรวจสารเคมี: ${c.material}`,
+        description: `ล็อต: ${c.lot} ได้รับลงทะเบียนเรียบร้อย`,
+        page: "precheck"
+      });
+    }
+  });
+
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans text-slate-800">
       {/* Sidebar Navigation */}
@@ -319,8 +388,8 @@ export default function App() {
           setSidebarOpen={setSidebarOpen} 
           lowStockCount={lowStockCount}
           dbStatus={dbStatus}
-          activeTheme={activeTheme}
-          setActiveTheme={setActiveTheme}
+          notifications={notifications}
+          onNavigate={setActivePage}
         />
 
         {/* Content Viewport */}

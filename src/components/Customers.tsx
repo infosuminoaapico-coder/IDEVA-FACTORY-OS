@@ -28,6 +28,7 @@ export default function Customers({
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [address, setAddress] = useState("");
+  const [status, setStatus] = useState("active");
 
   const filtered = customers.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -43,6 +44,7 @@ export default function Customers({
       setName(customer.name);
       setContact(customer.contact || "");
       setAddress(customer.address || "");
+      setStatus(customer.status || "active");
     } else {
       setEditingCustomer(null);
       // Auto generate draft code
@@ -51,13 +53,14 @@ export default function Customers({
       setName("");
       setContact("");
       setAddress("");
+      setStatus("active");
     }
     setIsModalOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !code.trim()) return;
 
     await onSaveCustomer({
       id: editingCustomer ? editingCustomer.id : 0,
@@ -65,7 +68,7 @@ export default function Customers({
       name,
       contact,
       address,
-      status: "active"
+      status
     });
     setIsModalOpen(false);
   };
@@ -206,31 +209,20 @@ export default function Customers({
 
             <form onSubmit={handleSubmit}>
               <div className="p-4 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">รหัสลูกค้า</label>
-                    <input
-                      type="text"
-                      value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      required
-                      className="w-full px-3 py-1.5 border border-slate-200 bg-slate-50 rounded-lg text-xs font-mono font-bold focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">ชื่อผู้ติดต่อ / แบรนด์</label>
-                    <input
-                      type="text"
-                      value={contact}
-                      onChange={(e) => setContact(e.target.value)}
-                      placeholder="เช่น คุณสมศักดิ์ แบรนด์ A"
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">รหัสลูกค้า <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    required
+                    placeholder="เช่น C69-001"
+                    className="w-full px-3 py-1.5 border border-slate-200 bg-slate-50 rounded-lg text-xs font-mono font-bold focus:outline-none focus:border-blue-500"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">ชื่อลูกค้า / บริษัท <span className="text-red-500">*</span></label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">ชื่อลูกค้า <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     value={name}
@@ -242,14 +234,37 @@ export default function Customers({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">ที่อยู่จดทะเบียน / จัดส่ง</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">ชื่อแบรนด์</label>
+                  <input
+                    type="text"
+                    value={contact}
+                    onChange={(e) => setContact(e.target.value)}
+                    placeholder="เช่น แบรนด์ A"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">ที่อยู่จัดส่ง</label>
                   <textarea
                     rows={3}
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="กรอกเลขที่ บ้านเลขที่ หมู่บ้าน แขวง เขต จังหวัด..."
+                    placeholder="กรอกที่อยู่จัดส่ง บ้านเลขที่ ถนน แขวง เขต จังหวัด..."
                     className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-500 font-sans"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">สถานะ</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="active">ปกติ</option>
+                    <option value="suspended">ระงับ</option>
+                  </select>
                 </div>
               </div>
 

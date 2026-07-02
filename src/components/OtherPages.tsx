@@ -186,6 +186,7 @@ export function ProductionPage({
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [editingPo, setEditingPo] = useState<ProductionOrder | null>(null);
 
   const [code, setCode] = useState("");
   const [customerId, setCustomerId] = useState<number | "">("");
@@ -207,16 +208,29 @@ export function ProductionPage({
     return matchesSearch && matchesStatus;
   });
 
-  const openFormModal = () => {
-    const num = productionOrders.length + 1;
-    setCode(`PO-2026-${String(num).padStart(4, "0")}`);
-    setCustomerId("");
-    setProductId("");
-    setQuantity(500);
-    setUnit("ลิตร");
-    setStaff("สมชาย ใจดี");
-    setStatus("pending");
-    setDueDate(new Date(Date.now() + 5*24*60*60*1000).toISOString().slice(0, 10));
+  const openFormModal = (po?: ProductionOrder) => {
+    if (po) {
+      setEditingPo(po);
+      setCode(po.code);
+      setCustomerId(po.customer_id || "");
+      setProductId(po.product_id || "");
+      setQuantity(po.quantity);
+      setUnit(po.unit || "ลิตร");
+      setStaff(po.staff || "");
+      setStatus(po.status || "pending");
+      setDueDate(po.due_date || "");
+    } else {
+      setEditingPo(null);
+      const num = productionOrders.length + 1;
+      setCode(`PO-2026-${String(num).padStart(4, "0")}`);
+      setCustomerId("");
+      setProductId("");
+      setQuantity(500);
+      setUnit("ลิตร");
+      setStaff("สมชาย ใจดี");
+      setStatus("pending");
+      setDueDate(new Date(Date.now() + 5*24*60*60*1000).toISOString().slice(0, 10));
+    }
     setIsModalOpen(true);
   };
 
@@ -224,7 +238,7 @@ export function ProductionPage({
     e.preventDefault();
     if (!customerId || !productId || !quantity) return;
     await onSaveProduction({
-      id: 0,
+      id: editingPo ? editingPo.id : 0,
       code,
       customer_id: Number(customerId),
       product_id: Number(productId),
@@ -233,9 +247,16 @@ export function ProductionPage({
       status,
       due_date: dueDate,
       staff,
-      date: new Date().toISOString().slice(0, 10)
+      date: editingPo ? editingPo.date : new Date().toISOString().slice(0, 10)
     });
     setIsModalOpen(false);
+  };
+
+  const handleUpdateStatus = async (po: ProductionOrder, newStatus: string) => {
+    await onSaveProduction({
+      ...po,
+      status: newStatus
+    });
   };
 
   const getStatusBadge = (s: string) => {
@@ -270,7 +291,7 @@ export function ProductionPage({
           ))}
         </div>
         <button
-          onClick={openFormModal}
+          onClick={() => openFormModal()}
           className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 hover:bg-blue-700 transition-all shadow-md shadow-blue-600/10 cursor-pointer"
         >
           <Plus className="w-4 h-4" /> สร้างใบสั่งผลิต
@@ -292,32 +313,101 @@ export function ProductionPage({
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-600">
+          <table className="w-full text-left text-xs text-slate-700 border-collapse border border-slate-100">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 uppercase">
-                <th className="p-3">เลขที่</th>
-                <th className="p-3">วันที่เริ่ม</th>
-                <th className="p-3">ลูกค้า / แบรนด์</th>
-                <th className="p-3">สินค้าที่สั่งผลิต</th>
-                <th className="p-3">จำนวนผลิต</th>
-                <th className="p-3">ผู้รับผิดชอบ</th>
-                <th className="p-3">วันกำหนดส่ง</th>
-                <th className="p-3">สถานะ</th>
+              <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px] uppercase">
+                <th className="p-2.5 border border-slate-200 text-center w-12">ลำดับ</th>
+                <th className="p-2.5 border border-slate-200">เลขที่</th>
+                <th className="p-2.5 border border-slate-200">วันที่เริ่ม</th>
+                <th className="p-2.5 border border-slate-200">ลูกค้า / แบรนด์</th>
+                <th className="p-2.5 border border-slate-200">สินค้าที่สั่งผลิต</th>
+                <th className="p-2.5 border border-slate-200 text-right">จำนวนผลิต</th>
+                <th className="p-2.5 border border-slate-200">ผู้รับผิดชอบ</th>
+                <th className="p-2.5 border border-slate-200">วันกำหนดส่ง</th>
+                <th className="p-2.5 border border-slate-200 text-center">สถานะ</th>
+                <th className="p-2.5 border border-slate-200 text-center w-80">ดำเนินการขั้นตอน / แก้ไข</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map(po => (
-                <tr key={po.id}>
-                  <td className="p-3 font-bold font-mono text-blue-600">{po.code}</td>
-                  <td className="p-3 text-slate-400">{po.date}</td>
-                  <td className="p-3 font-semibold text-slate-800">{po.customer_name || "ไม่ได้ระบุ"}</td>
-                  <td className="p-3 text-slate-700 font-medium">{po.product_name || "ไม่ได้ระบุ"}</td>
-                  <td className="p-3 font-semibold font-mono">{po.quantity.toLocaleString()} {po.unit}</td>
-                  <td className="p-3 font-medium text-slate-600">{po.staff}</td>
-                  <td className="p-3 text-indigo-600 font-medium">{po.due_date}</td>
-                  <td className="p-3">{getStatusBadge(po.status)}</td>
-                </tr>
-              ))}
+            <tbody>
+              {filtered.map((po, index) => {
+                const cust = customers.find(c => c.id === po.customer_id);
+                const prod = products.find(p => p.id === po.product_id);
+                const custDisp = cust ? `${cust.name} ${cust.contact ? `(${cust.contact})` : ""}` : (po.customer_name || "ไม่ได้ระบุ");
+                const prodDisp = prod ? `${prod.name} (${prod.code})` : (po.product_name || "ไม่ได้ระบุ");
+
+                return (
+                  <tr key={po.id} className="odd:bg-white even:bg-slate-50/60 hover:bg-blue-50/30 transition-colors">
+                    <td className="p-2 border border-slate-200/60 text-center font-mono text-slate-400">{index + 1}</td>
+                    <td className="p-2 border border-slate-200/60 font-bold font-mono text-blue-600">{po.code}</td>
+                    <td className="p-2 border border-slate-200/60 text-slate-400 font-mono">{po.date}</td>
+                    <td className="p-2 border border-slate-200/60 font-semibold text-slate-800">{custDisp}</td>
+                    <td className="p-2 border border-slate-200/60 text-slate-700 font-medium">{prodDisp}</td>
+                    <td className="p-2 border border-slate-200/60 font-semibold font-mono text-right">{po.quantity.toLocaleString()} {po.unit}</td>
+                    <td className="p-2 border border-slate-200/60 font-medium text-slate-600">{po.staff}</td>
+                    <td className="p-2 border border-slate-200/60 text-indigo-600 font-medium font-mono">{po.due_date}</td>
+                    <td className="p-2 border border-slate-200/60 text-center">{getStatusBadge(po.status)}</td>
+                    <td className="p-2 border border-slate-200/60 text-center">
+                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                        {/* Status update buttons */}
+                        <button
+                          onClick={() => handleUpdateStatus(po, "pending")}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+                            po.status === "pending"
+                              ? "bg-amber-600 text-white border-amber-600 shadow-sm"
+                              : "bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200"
+                          }`}
+                        >
+                          รอผลิต
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(po, "running")}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+                            po.status === "running"
+                              ? "bg-blue-600 text-white border-blue-600 shadow-sm animate-pulse"
+                              : "bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                          }`}
+                        >
+                          กำลังผลิต
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(po, "done")}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+                            po.status === "done"
+                              ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                              : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                          }`}
+                        >
+                          ผลิตเสร็จแล้ว
+                        </button>
+
+                        <div className="w-[1px] h-4 bg-slate-200 mx-0.5"></div>
+
+                        {/* Edit Button */}
+                        <button
+                          onClick={() => openFormModal(po)}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-all"
+                          title="แก้ไขรายละเอียด"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => {
+                            if (confirm(`คุณต้องการลบใบสั่งผลิต ${po.code} ใช่หรือไม่?`)) {
+                              onDeleteProduction(po.id);
+                            }
+                          }}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded transition-all"
+                          title="ลบ"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -325,16 +415,18 @@ export function ProductionPage({
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in duration-150">
             <div className="flex items-center justify-between p-4 bg-slate-50 border-b border-slate-100">
-              <h3 className="text-xs font-bold text-slate-800">ออกใบสั่งประกอบการผลิต (Production Work Order)</h3>
+              <h3 className="text-xs font-bold text-slate-800">
+                {editingPo ? `แก้ไขใบสั่งผลิต (${editingPo.code})` : "ออกใบสั่งประกอบการผลิต (Production Work Order)"}
+              </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">เลขที่ใบสั่ง</label>
-                  <input type="text" value={code} readonly className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono font-bold bg-slate-50" />
+                  <input type="text" value={code} readOnly className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono font-bold bg-slate-50" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">ผู้รับผิดชอบคุมถังผสม</label>
@@ -376,8 +468,10 @@ export function ProductionPage({
                 </div>
               </div>
               <div className="flex justify-end gap-2 border-t pt-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-3 py-1.5 bg-white border rounded-lg text-xs">ยกเลิก</button>
-                <button type="submit" className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold">เปิดใบสั่งผลิต</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 font-semibold hover:bg-slate-50">ยกเลิก</button>
+                <button type="submit" className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors">
+                  {editingPo ? "บันทึกการแก้ไข" : "เปิดใบสั่งผลิต"}
+                </button>
               </div>
             </form>
           </div>

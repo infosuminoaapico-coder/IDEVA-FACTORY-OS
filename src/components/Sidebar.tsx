@@ -142,10 +142,10 @@ export default function Sidebar({ activePage, setActivePage, isOpen, setIsOpen }
         {/* Footer info */}
         <div className="p-4 border-t border-blue-100 flex items-center gap-3 bg-white/30 backdrop-blur-md">
           <div className="w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-xs font-bold text-blue-600">
-            สม
+            ไอ
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-xs font-semibold text-slate-700 truncate">คุณสมชาย ใจดี</h4>
+            <h4 className="text-xs font-semibold text-slate-700 truncate" title="บริษัท ไอดีว่า กรุ๊ป จำกัด">บริษัท ไอดีว่า กรุ๊ป จำกัด</h4>
             <p className="text-[10px] text-slate-500 truncate">ผู้ดูแลระบบคลังและสูตร</p>
           </div>
           <button className="text-slate-400 hover:text-slate-600">
