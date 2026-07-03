@@ -94,13 +94,44 @@ export default function Boms({
     setIsViewModalOpen(true);
   };
 
+  // Helper function to auto-increment version (e.g., v1.0 -> v1.1, V2.1 -> V2.2)
+  const incrementVersion = (currentVersion: string): string => {
+    if (!currentVersion) return "v1.0";
+    const trimmed = currentVersion.trim();
+    
+    // Try matching classic v1.0, V1.0, v2.12, version 1.3
+    const match = trimmed.match(/^([vV]?|version\s*|Version\s*)(\d+)\.(\d+)(.*)$/);
+    if (match) {
+      const prefix = match[1] || "v";
+      const major = parseInt(match[2], 10);
+      const minor = parseInt(match[3], 10) + 1;
+      const suffix = match[4] || "";
+      return `${prefix}${major}.${minor}${suffix}`;
+    }
+    
+    // Try matching a simple single number e.g. "1", "v2"
+    const singleMatch = trimmed.match(/^([vV]?|version\s*|Version\s*)(\d+)(.*)$/);
+    if (singleMatch) {
+      const prefix = singleMatch[1] || "v";
+      const num = parseInt(singleMatch[2], 10) + 1;
+      const suffix = singleMatch[3] || "";
+      return `${prefix}${num}.0${suffix}`;
+    }
+
+    // Fallback
+    return trimmed + ".1";
+  };
+
   const openEditModal = (bom: BomRecipe | null = null, clone = false) => {
     if (bom) {
       setEditingBom(clone ? null : bom);
       setProductId(bom.product_id);
       const matchedProd = products.find(p => p.id === bom.product_id);
       setProductSearch(matchedProd ? `${matchedProd.code} - ${matchedProd.name}` : "");
-      setVersion(clone ? "v1.0" : bom.version);
+      
+      // Auto-increment version if editing, otherwise reset to v1.0 if cloning
+      const nextVer = clone ? "v1.0" : incrementVersion(bom.version);
+      setVersion(nextVer);
       setStatus(bom.status);
       setNotes(bom.notes || "");
       setMaterials(bom.materials.map(m => ({
@@ -407,26 +438,26 @@ export default function Boms({
 
       {/* Formulation Create/Edit/Clone Modal */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50 flex-shrink-0">
-              <h3 className="text-xs md:text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                <ClipboardList className="w-4.5 h-4.5 text-blue-600" />
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-slate-150 bg-slate-50/80 flex-shrink-0">
+              <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-slate-800 flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-blue-600" />
                 {editingBom ? "แก้ไขสูตรการผลิต (BOM)" : "สร้างสูตรการผลิต (BOM) ใหม่"}
               </h3>
               <button 
                 onClick={() => setIsEditModalOpen(false)} 
-                className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-lg"
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-lg transition-colors cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSaveSubmit} className="flex-1 overflow-y-auto flex flex-col">
-              <div className="p-5 space-y-4 flex-1">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="relative">
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">เลือกสินค้าผลิตภัณฑ์ <span className="text-red-500">*</span></label>
+              <div className="p-6 md:p-8 space-y-6 flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="relative md:col-span-1">
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wide mb-1.5">เลือกสินค้าผลิตภัณฑ์ <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <input
                         type="text"
@@ -449,17 +480,17 @@ export default function Boms({
                         }}
                         placeholder="พิมพ์เพื่อค้นหา หรือเลือกจากรายการ..."
                         required
-                        className="w-full px-3 py-1.5 pr-8 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-500 bg-white"
+                        className="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all shadow-sm text-slate-800 placeholder:text-slate-400"
                       />
-                      <div className="absolute right-2.5 top-2.5 text-slate-400 pointer-events-none">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="absolute right-3 top-3 text-slate-400 pointer-events-none">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                         </svg>
                       </div>
                     </div>
 
                     {isProductDropdownOpen && (
-                      <div className="absolute z-[60] left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl divide-y divide-slate-100">
+                      <div className="absolute z-[60] left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl divide-y divide-slate-100">
                         {products
                           .filter(p => {
                             const pCode = (p.code || "").toLowerCase();
@@ -476,10 +507,10 @@ export default function Boms({
                                 setProductSearch(`${p.code} - ${p.name}`);
                                 setIsProductDropdownOpen(false);
                               }}
-                              className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 text-slate-700 font-sans transition-colors flex items-center justify-between"
+                              className="w-full text-left px-4 py-3 text-xs md:text-sm hover:bg-blue-50 text-slate-700 font-sans transition-colors flex items-center justify-between"
                             >
                               <span className="font-semibold text-slate-800">{p.code} - {p.name}</span>
-                              <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono uppercase">{p.type}</span>
+                              <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-1 rounded font-mono uppercase font-bold">{p.type}</span>
                             </button>
                           ))
                         }
@@ -489,7 +520,7 @@ export default function Boms({
                           const q = productSearch.toLowerCase();
                           return pCode.includes(q) || pName.includes(q);
                         }).length === 0 && (
-                          <div className="px-3 py-2 text-xs text-slate-400 italic">
+                          <div className="px-4 py-3 text-xs md:text-sm text-slate-400 italic">
                             ไม่พบสินค้าผลิตภัณฑ์ที่ตรงกัน
                           </div>
                         )}
@@ -498,23 +529,23 @@ export default function Boms({
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">เวอร์ชันสูตร</label>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wide mb-1.5">เวอร์ชันสูตร</label>
                     <input
                       type="text"
                       value={version}
                       onChange={(e) => setVersion(e.target.value)}
                       placeholder="เช่น v1.0, v2.1"
                       required
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all shadow-sm text-slate-800"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">สถานะ</label>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wide mb-1.5">สถานะการใช้งาน</label>
                     <select
                       value={status}
                       onChange={(e) => setStatus(e.target.value)}
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-500 bg-white"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all shadow-sm text-slate-800 cursor-pointer"
                     >
                       <option value="active">เปิดใช้งาน (Active)</option>
                       <option value="test">สูตรทดลอง (Test)</option>
@@ -524,36 +555,47 @@ export default function Boms({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">หมายเหตุ / วิธีการผสม</label>
+                  <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wide mb-1.5">หมายเหตุ / วิธีการผสมสูตรสำเร็จ</label>
                   <input
                     type="text"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="ระบุคำอธิบายย่อสำหรับการผสม เช่น สูตรสารหนืดเกรดพรีเมียม"
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-500"
+                    placeholder="ระบุคำอธิบายสั้นๆ สำหรับการผสม หรือข้อควรระวังพิเศษ"
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all shadow-sm text-slate-800"
                   />
                 </div>
 
                 {/* Ingredients formulation lines */}
-                <div className="space-y-2 border-t border-slate-100 pt-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <Database className="w-4 h-4 text-slate-500" /> สัดส่วนส่วนผสมวัตถุดิบเคมี
+                <div className="space-y-3 border-t border-slate-150 pt-5">
+                  <div className="flex items-center justify-between pb-1.5">
+                    <h4 className="text-xs md:text-sm lg:text-base font-extrabold text-slate-800 flex items-center gap-2">
+                      <Database className="w-5 h-5 text-blue-500" /> สัดส่วนส่วนผสมวัตถุดิบเคมีหลัก <span className="text-xs font-normal text-slate-400">(ต่อหนึ่งถังผลิตมาตรฐาน)</span>
                     </h4>
                     <button
                       type="button"
                       onClick={handleAddMaterialRow}
-                      className="text-[11px] text-blue-600 font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
+                      className="text-xs md:text-sm text-blue-600 font-extrabold hover:text-blue-800 hover:underline flex items-center gap-1 cursor-pointer bg-blue-50 px-3 py-1.5 rounded-lg transition-all border border-blue-100 shadow-sm"
                     >
-                      + เพิ่มวัตถุดิบย่อย
+                      + เพิ่มวัตถุดิบเคมี
                     </button>
                   </div>
 
-                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                  <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                    {/* Header Columns for Tablet and Up */}
+                    {materials.length > 0 && (
+                      <div className="hidden md:flex gap-3 items-center px-3 pb-1 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        <div className="flex-1">ชื่อวัตถุดิบเคมีภัณฑ์ / สารเคมี</div>
+                        <div className="w-32">ปริมาณสัดส่วน</div>
+                        <div className="w-32">หน่วยวัด</div>
+                        <div className="w-8"></div>
+                      </div>
+                    )}
+
                     {materials.map((m, idx) => (
-                      <div key={idx} className="flex gap-2 items-center bg-slate-50 p-2.5 rounded-lg border border-slate-200/60">
+                      <div key={idx} className="flex flex-col md:flex-row gap-3 items-stretch md:items-center bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm">
                         {/* Material dropdown selection with Search & Typeable capability */}
                         <div className="flex-1 relative">
+                          <label className="block md:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">วัตถุดิบเคมี</label>
                           <div className="relative">
                             <input
                               type="text"
@@ -568,8 +610,8 @@ export default function Boms({
                                   setOpenDropdownIdx(null);
                                 }, 250);
                               }}
-                              placeholder="พิมพ์วัตถุดิบเพื่อค้นหา หรือเลือกจากรายการ..."
-                              className="w-full pl-2 pr-7 py-1.5 bg-white border border-slate-200 rounded-md text-xs focus:outline-none focus:border-blue-500 font-sans"
+                              placeholder="พิมพ์ค้นหาหรือป้อนสารเคมี..."
+                              className="w-full pl-3 pr-8 py-2.5 bg-white border border-slate-300 rounded-xl text-xs md:text-sm font-semibold text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
                             />
                             <button
                               type="button"
@@ -577,14 +619,14 @@ export default function Boms({
                               onClick={() => {
                                 setOpenDropdownIdx(openDropdownIdx === idx ? null : idx);
                               }}
-                              className="absolute right-1.5 top-1.5 p-0.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                              className="absolute right-2 top-2.5 p-0.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
                             >
-                              <ChevronDown className="w-3.5 h-3.5" />
+                              <ChevronDown className="w-4 h-4" />
                             </button>
                           </div>
 
                           {openDropdownIdx === idx && (
-                            <div className="absolute z-[70] left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-md shadow-xl divide-y divide-slate-100">
+                            <div className="absolute z-[70] left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl divide-y divide-slate-100">
                               {rawMaterials
                                 .filter(rm => {
                                   const rmName = (rm.name || "").toLowerCase();
@@ -600,11 +642,11 @@ export default function Boms({
                                       handleMaterialChange(idx, "material_name", rm.name);
                                       setOpenDropdownIdx(null);
                                     }}
-                                    className="w-full text-left px-2.5 py-2 text-xs hover:bg-blue-50 text-slate-700 font-sans transition-colors flex flex-col gap-0.5"
+                                    className="w-full text-left px-3 py-2.5 text-xs md:text-sm hover:bg-blue-50 text-slate-700 font-sans transition-colors flex flex-col gap-0.5"
                                   >
                                     <div className="flex items-center justify-between">
                                       <span className="font-semibold text-slate-800">{rm.code} - {rm.name}</span>
-                                      <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono uppercase">{rm.unit}</span>
+                                      <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono uppercase font-bold">{rm.unit}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-[10px] text-slate-500">
                                       <span className={rm.stock_qty <= rm.min_stock ? "text-red-500 font-medium" : "text-emerald-600 font-medium"}>
@@ -625,12 +667,12 @@ export default function Boms({
                                 const q = (m.material_name || "").toLowerCase();
                                 return rmName.includes(q) || rmCode.includes(q);
                               }).length === 0 && (
-                                <div className="px-2.5 py-2 text-xs text-slate-400 italic">
+                                <div className="px-3 py-2.5 text-xs md:text-sm text-slate-400 italic">
                                   ไม่พบวัตถุดิบเคมีที่ตรงกัน
                                 </div>
                               )}
                               {m.material_name.trim() !== "" && !rawMaterials.some(rm => rm.name.toLowerCase() === m.material_name.toLowerCase()) && (
-                                <div className="p-2 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-500 italic">
+                                <div className="p-2.5 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-500 italic">
                                   ✍️ ใช้ชื่อที่พิมพ์: "{m.material_name}" (เพิ่มข้อมูลสารเคมีนอกระบบ)
                                 </div>
                               )}
@@ -639,23 +681,25 @@ export default function Boms({
                         </div>
 
                         {/* Quantity */}
-                        <div className="w-24">
+                        <div className="w-full md:w-32">
+                          <label className="block md:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ปริมาณ</label>
                           <input
                             type="number"
                             step="0.01"
                             value={m.quantity || ""}
                             onChange={(e) => handleMaterialChange(idx, "quantity", parseFloat(e.target.value) || 0)}
                             placeholder="จำนวน"
-                            className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-md text-xs text-right font-mono focus:outline-none focus:border-blue-500"
+                            className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs md:text-sm text-right font-bold font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-800"
                           />
                         </div>
 
                         {/* Unit selection */}
-                        <div className="w-24">
+                        <div className="w-full md:w-32">
+                          <label className="block md:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">หน่วยวัด</label>
                           <select
                             value={m.unit}
                             onChange={(e) => handleMaterialChange(idx, "unit", e.target.value)}
-                            className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-md text-xs focus:outline-none focus:border-blue-500"
+                            className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-800 cursor-pointer"
                           >
                             {standardUnits.map((un, unIdx) => (
                               <option key={unIdx} value={un}>{un}</option>
@@ -664,32 +708,35 @@ export default function Boms({
                         </div>
 
                         {/* Delete row */}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMaterialRow(idx)}
-                          className="p-1 text-red-500 hover:bg-red-50 hover:text-red-700 rounded-md transition-all cursor-pointer"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-end justify-end md:items-center">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMaterialRow(idx)}
+                            className="p-2 text-red-500 hover:bg-red-50 hover:text-red-700 rounded-xl transition-all cursor-pointer border border-transparent hover:border-red-100"
+                            title="ลบแถววัตถุดิบ"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2 flex-shrink-0">
+              <div className="p-5 bg-slate-50 border-t border-slate-150 flex justify-end gap-3 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-100 transition-all cursor-pointer"
+                  className="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl text-xs md:text-sm font-bold hover:bg-slate-100 transition-all cursor-pointer shadow-sm"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-all shadow-md shadow-blue-600/10 cursor-pointer"
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-blue-600/10 cursor-pointer"
                 >
-                  <Save className="w-3.5 h-3.5" /> บันทึกสูตร (BOM)
+                  <Save className="w-4 h-4" /> บันทึกสูตร (BOM)
                 </button>
               </div>
             </form>

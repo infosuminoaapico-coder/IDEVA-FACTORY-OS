@@ -1262,74 +1262,152 @@ export function GrnsPage({ grns, rawMaterials, purchaseOrders, onAddGrn }: GrnsP
                   <tr key={g.id}>
                     <td className="p-3 font-bold font-mono text-emerald-600">{g.code}</td>
                     <td className="p-3 font-mono text-slate-500">{po ? po.code : `PRM-2026-002${g.purchase_order_id}`}</td>
-                    <td className="p-3 font-semibold text-slate-800">{mat ? mat.name : "เคมีภัณฑ์ย่อย"}</td>
-                    <td className="p-3 text-right font-bold font-mono text-blue-600">{g.received_qty.toLocaleString()} {mat ? mat.unit : "ลิตร"}</td>
-                    <td className="p-3 font-mono text-slate-700 font-semibold">{g.lot_number}</td>
-                    <td className="p-3 text-red-600 font-medium">{g.expiry_date}</td>
-                    <td className="p-3 font-medium text-slate-600">{g.receiver}</td>
+                    <td className="p-3 font-semibold text-slate-800">{mat ? mat.name : "วัตถุดิบเคมีทั่วไป"}</td>
+                    <td className="p-3 text-right font-extrabold font-mono text-slate-800">{g.received_qty.toLocaleString()} {mat ? mat.unit : ""}</td>
+                    <td className="p-3 font-bold font-mono text-emerald-700">{g.lot_number}</td>
+                    <td className="p-3 font-mono text-slate-400">{g.expiry_date}</td>
+                    <td className="p-3 text-slate-500 font-semibold">{g.receiver}</td>
                   </tr>
                 );
               })}
+              {grns.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-slate-400 italic">
+                    ยังไม่มีข้อมูลการรับเคมีภัณฑ์เข้าคลัง
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* บันทึกรับเข้า (GRN) Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in duration-100">
-            <div className="flex items-center justify-between p-4 bg-slate-50 border-b border-slate-100">
-              <h3 className="text-xs font-bold text-slate-800">บันทึกตรวจรับของเข้าคลังวัตถุดิบ (GRN Entry)</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-slate-150 bg-slate-50/85">
+              <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-slate-850 flex items-center gap-2">
+                <Truck className="w-5 h-5 text-emerald-600" />
+                บันทึกใบรับเข้าคลังเคมีภัณฑ์ (GRN)
+              </h3>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-650 hover:bg-slate-200/50 rounded-lg cursor-pointer transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">เลขใบรับ GRN</label>
-                  <input type="text" value={code} readonly className="w-full px-3 py-1.5 border border-slate-200 bg-slate-50 font-mono font-bold text-xs" />
+
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1">
+              <div className="p-6 md:p-8 space-y-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">เลขที่ใบรับเข้า (GRN)</label>
+                    <input
+                      type="text"
+                      value={code}
+                      disabled
+                      className="w-full px-4 py-2.5 border border-slate-250 bg-slate-50 text-slate-500 rounded-xl text-xs md:text-sm font-bold font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">อ้างอิงใบสั่งซื้อ PO <span className="text-red-500">*</span></label>
+                    <select
+                      value={purchaseOrderId}
+                      onChange={(e) => handlePurchaseOrderChange(Number(e.target.value))}
+                      required
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white cursor-pointer"
+                    >
+                      <option value="">-- เลือกใบจัดซื้อ PO --</option>
+                      {purchaseOrders.map(po => (
+                        <option key={po.id} value={po.id}>{po.code} ({po.supplier})</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
+
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">อ้างอิงใบ PO สั่งจัดซื้อ</label>
-                  <select value={purchaseOrderId} onChange={(e) => handlePurchaseOrderChange(Number(e.target.value))} required className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white font-mono font-bold">
-                    <option value="">-- เลือกใบ PO --</option>
-                    {purchaseOrders.map(po => (
-                      <option key={po.id} value={po.id}>{po.code} - {po.supplier}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">เคมีภัณฑ์ที่ส่งมอบ</label>
-                  <select value={materialId} onChange={(e) => setMaterialId(Number(e.target.value))} required className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white">
-                    <option value="">-- เลือกรายการเคมี --</option>
+                  <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">เลือกวัตถุดิบเคมีที่รับเข้า <span className="text-red-500">*</span></label>
+                  <select
+                    value={materialId}
+                    onChange={(e) => setMaterialId(Number(e.target.value))}
+                    required
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold focus:outline-none focus:border-blue-500 bg-white cursor-pointer"
+                  >
+                    <option value="">-- เลือกรายการเคมีภัณฑ์ --</option>
                     {rawMaterials.map(rm => (
                       <option key={rm.id} value={rm.id}>{rm.code} - {rm.name}</option>
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">จำนวนที่รับจริง</label>
-                  <input type="number" value={receivedQty || ""} onChange={(e) => setReceivedQty(parseFloat(e.target.value) || 0)} required className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono text-right" />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">จำนวนที่รับจริง</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={receivedQty}
+                      onChange={(e) => setReceivedQty(parseFloat(e.target.value) || 0)}
+                      required
+                      placeholder="0.00"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 bg-white text-right text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">Lot Number สารเคมี <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={lotNumber}
+                      onChange={(e) => setLotNumber(e.target.value)}
+                      required
+                      placeholder="เช่น L240601-01"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 bg-white text-slate-800"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">วันหมดอายุล๊อต</label>
+                    <input
+                      type="date"
+                      value={expiryDate}
+                      onChange={(e) => setExpiryDate(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">ผู้เซ็นต์รับของเข้า</label>
+                    <input
+                      type="text"
+                      value={receiver}
+                      onChange={(e) => setReceiver(e.target.value)}
+                      required
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white text-slate-800"
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">กำหนด Lot Number</label>
-                  <input type="text" value={lotNumber} onChange={(e) => setLotNumber(e.target.value)} required placeholder="L260701-001" className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">วันหมดอายุของเคมี</label>
-                  <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} required className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">ผู้เซ็นต์ตรวจรับสินค้า</label>
-                <input type="text" value={receiver} onChange={(e) => setReceiver(e.target.value)} required className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs" />
-              </div>
-              <div className="flex justify-end gap-2 border-t pt-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-3 py-1.5 bg-white border rounded-lg text-xs">ยกเลิก</button>
-                <button type="submit" className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold">บันทึกรับของเข้าระบบ</button>
+
+              <div className="p-5 bg-slate-50 border-t border-slate-150 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl text-xs md:text-sm font-bold hover:bg-slate-100 transition-all cursor-pointer shadow-sm"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-emerald-600/10 cursor-pointer"
+                >
+                  <Save className="w-4 h-4" /> บันทึกรับเข้าคลัง
+                </button>
               </div>
             </form>
           </div>
@@ -1346,9 +1424,149 @@ interface InventoryPageProps {
   rawMaterials: RawMaterial[];
   inventoryPacks: InventoryPack[];
   productionOrders: ProductionOrder[];
+  onSaveRawMaterial?: (rm: any) => Promise<void>;
+  onDeleteRawMaterial?: (id: number) => Promise<void>;
+  onSaveInventoryPack?: (ip: any) => Promise<void>;
+  onDeleteInventoryPack?: (id: number) => Promise<void>;
 }
-export function InventoryPage({ rawMaterials, inventoryPacks, productionOrders }: InventoryPageProps) {
+export function InventoryPage({ 
+  rawMaterials, 
+  inventoryPacks, 
+  productionOrders,
+  onSaveRawMaterial,
+  onDeleteRawMaterial,
+  onSaveInventoryPack,
+  onDeleteInventoryPack
+}: InventoryPageProps) {
   const [activeTab, setActiveTab] = useState("raw");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Modals state
+  const [isRawModalOpen, setIsRawModalOpen] = useState(false);
+  const [editingRaw, setEditingRaw] = useState<RawMaterial | null>(null);
+
+  const [isPackModalOpen, setIsPackModalOpen] = useState(false);
+  const [editingPack, setEditingPack] = useState<InventoryPack | null>(null);
+
+  // Raw Material Form States
+  const [rawCode, setRawCode] = useState("");
+  const [rawName, setRawName] = useState("");
+  const [rawUnit, setRawUnit] = useState("ลิตร");
+  const [rawStockQty, setRawStockQty] = useState<number>(0);
+  const [rawMinStock, setRawMinStock] = useState<number>(10);
+  const [rawStatus, setRawStatus] = useState("active");
+
+  // Pack Form States
+  const [packCode, setPackCode] = useState("");
+  const [packType, setPackType] = useState("ขวด");
+  const [packName, setPackName] = useState("");
+  const [packQty, setPackQty] = useState<number>(0);
+  const [packUnit, setPackUnit] = useState("ชิ้น");
+  const [packStatus, setPackStatus] = useState("active");
+
+  const openRawModal = (rm: RawMaterial | null = null) => {
+    if (rm) {
+      setEditingRaw(rm);
+      setRawCode(rm.code);
+      setRawName(rm.name);
+      setRawUnit(rm.unit);
+      setRawStockQty(rm.stock_qty);
+      setRawMinStock(rm.min_stock);
+      setRawStatus(rm.status);
+    } else {
+      const nextNum = rawMaterials.length > 0 
+        ? Math.max(...rawMaterials.map(r => {
+            const numStr = (r.code || "").replace("RM-", "");
+            return parseInt(numStr, 10) || 0;
+          })) + 1 
+        : 1;
+      setRawCode(`RM-${String(nextNum).padStart(3, "0")}`);
+      setEditingRaw(null);
+      setRawName("");
+      setRawUnit("ลิตร");
+      setRawStockQty(0);
+      setRawMinStock(20);
+      setRawStatus("active");
+    }
+    setIsRawModalOpen(true);
+  };
+
+  const handleRawSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rawCode.trim() || !rawName.trim()) return;
+    if (onSaveRawMaterial) {
+      await onSaveRawMaterial({
+        id: editingRaw ? editingRaw.id : 0,
+        code: rawCode.trim(),
+        name: rawName.trim(),
+        unit: rawUnit,
+        stock_qty: Number(rawStockQty) || 0,
+        min_stock: Number(rawMinStock) || 0,
+        status: rawStatus
+      });
+    }
+    setIsRawModalOpen(false);
+  };
+
+  const openPackModal = (ip: InventoryPack | null = null) => {
+    if (ip) {
+      setEditingPack(ip);
+      setPackCode(ip.code);
+      setPackType(ip.type);
+      setPackName(ip.name);
+      setPackQty(ip.qty);
+      setPackUnit(ip.unit);
+      setPackStatus(ip.status);
+    } else {
+      const nextNum = inventoryPacks.length > 0
+        ? Math.max(...inventoryPacks.map(p => {
+            const numStr = (p.code || "").replace("PK-", "");
+            return parseInt(numStr, 10) || 0;
+          })) + 1
+        : 1;
+      setPackCode(`PK-${String(nextNum).padStart(3, "0")}`);
+      setEditingPack(null);
+      setPackType("ขวด");
+      setPackName("");
+      setPackQty(0);
+      setPackUnit("ชิ้น");
+      setPackStatus("active");
+    }
+    setIsPackModalOpen(true);
+  };
+
+  const handlePackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!packCode.trim() || !packName.trim()) return;
+    if (onSaveInventoryPack) {
+      await onSaveInventoryPack({
+        id: editingPack ? editingPack.id : 0,
+        code: packCode.trim(),
+        type: packType,
+        name: packName.trim(),
+        qty: Number(packQty) || 0,
+        unit: packUnit,
+        status: packStatus
+      });
+    }
+    setIsPackModalOpen(false);
+  };
+
+  const handleRawDelete = async (id: number) => {
+    if (window.confirm("คุณแน่ใจหรือไม่ว่าต้องการลบรายการวัตถุดิบเคมีภัณฑ์นี้ออกจากระบบคลังสินค้า?")) {
+      if (onDeleteRawMaterial) {
+        await onDeleteRawMaterial(id);
+      }
+    }
+  };
+
+  const handlePackDelete = async (id: number) => {
+    if (window.confirm("คุณแน่ใจหรือไม่ว่าต้องการลบรายการบรรจุภัณฑ์นี้ออกจากระบบคลังสินค้า?")) {
+      if (onDeleteInventoryPack) {
+        await onDeleteInventoryPack(id);
+      }
+    }
+  };
 
   // Calculate Finished Goods stocks based on completed Production orders
   const finishedGoods = productionOrders
@@ -1371,25 +1589,93 @@ export function InventoryPage({ rawMaterials, inventoryPacks, productionOrders }
       return acc;
     }, []);
 
+  // Filter lists based on Search term
+  const term = searchTerm.toLowerCase().trim();
+  const filteredRaw = rawMaterials.filter(rm => 
+    (rm.code || "").toLowerCase().includes(term) || 
+    (rm.name || "").toLowerCase().includes(term)
+  );
+  
+  const filteredPacks = inventoryPacks.filter(ip => 
+    (ip.code || "").toLowerCase().includes(term) || 
+    (ip.name || "").toLowerCase().includes(term) ||
+    (ip.type || "").toLowerCase().includes(term)
+  );
+
+  const filteredFG = finishedGoods.filter(fg => 
+    (fg.code || "").toLowerCase().includes(term) || 
+    (fg.name || "").toLowerCase().includes(term) ||
+    (fg.lot || "").toLowerCase().includes(term)
+  );
+
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
+      {/* Search and Quick Action Toolbar */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="relative flex-1 max-w-md">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+            <Search className="w-4 h-4" />
+          </span>
+          <input
+            type="text"
+            placeholder="ค้นหาตามรหัส หรือชื่อสินค้าในคลัง..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-xs md:text-sm focus:outline-none focus:border-blue-500 bg-white"
+          />
+          {searchTerm && (
+            <button 
+              onClick={() => setSearchTerm("")}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 text-xs font-bold"
+            >
+              ล้าง
+            </button>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          {activeTab === "raw" && (
+            <button
+              onClick={() => openRawModal()}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs md:text-sm font-extrabold flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/10 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> เพิ่มวัตถุดิบเคมีดิบ
+            </button>
+          )}
+          {activeTab === "pack" && (
+            <button
+              onClick={() => openPackModal()}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs md:text-sm font-extrabold flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/10 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> เพิ่มบรรจุภัณฑ์
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Tab controls */}
-      <div className="flex border-b border-slate-200">
+      <div className="flex border-b border-slate-200 bg-slate-50 p-1.5 rounded-xl border">
         {[
-          { id: "raw", label: "วัตถุดิบเคมีดิบ" },
-          { id: "pack", label: "บรรจุภัณฑ์ (HDPE/ฉลาก)" },
-          { id: "fg", label: "ผลิตภัณฑ์สำเร็จรูป (Finished Goods)" }
+          { id: "raw", label: "วัตถุดิบเคมีดิบ", count: filteredRaw.length },
+          { id: "pack", label: "บรรจุภัณฑ์ (HDPE/ฉลาก)", count: filteredPacks.length },
+          { id: "fg", label: "ผลิตภัณฑ์สำเร็จรูป (Finished Goods)", count: filteredFG.length }
         ].map(tb => (
           <button
             key={tb.id}
-            onClick={() => setActiveTab(tb.id)}
-            className={`px-4 py-2 text-xs font-bold transition-all border-b-2 -mb-[2px] cursor-pointer ${
+            onClick={() => {
+              setActiveTab(tb.id);
+              setSearchTerm("");
+            }}
+            className={`flex-1 sm:flex-none px-4 py-2 text-xs md:text-sm font-bold transition-all rounded-lg cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === tb.id
-                ? "border-blue-600 text-blue-600 font-bold"
-                : "border-transparent text-slate-500 hover:text-slate-800"
+                ? "bg-white text-blue-600 shadow-sm border border-slate-200/60"
+                : "text-slate-500 hover:text-slate-850 hover:bg-white/50"
             }`}
           >
-            {tb.label}
+            <span>{tb.label}</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${activeTab === tb.id ? "bg-blue-100 text-blue-700 font-extrabold" : "bg-slate-200 text-slate-600"}`}>
+              {tb.count}
+            </span>
           </button>
         ))}
       </div>
@@ -1397,29 +1683,32 @@ export function InventoryPage({ rawMaterials, inventoryPacks, productionOrders }
       {activeTab === "raw" && (
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
+            <table className="w-full text-left text-xs md:text-sm text-slate-650">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 uppercase">
-                  <th className="p-3">รหัสเคมีดิบ</th>
-                  <th className="p-3">ชื่อสารสกัดเคมี</th>
-                  <th className="p-3 text-right">จำนวนคงคลัง</th>
-                  <th className="p-3 text-center">หน่วยนับ</th>
-                  <th className="p-3 text-right">จำนวนขั้นต่ำปลอดภัย</th>
-                  <th className="p-3 text-center">ระดับสถานะสต็อก</th>
+                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider font-bold">
+                  <th className="p-3.5">รหัสเคมีดิบ</th>
+                  <th className="p-3.5">ชื่อสารสกัดเคมี</th>
+                  <th className="p-3.5 text-right">จำนวนคงคลัง</th>
+                  <th className="p-3.5 text-center">หน่วยนับ</th>
+                  <th className="p-3.5 text-right">จำนวนขั้นต่ำปลอดภัย</th>
+                  <th className="p-3.5 text-center">ระดับสถานะสต็อก</th>
+                  <th className="p-3.5 text-center w-24">ดำเนินการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-sans">
-                {rawMaterials.map(rm => {
+                {filteredRaw.map(rm => {
                   const isLow = rm.stock_qty <= rm.min_stock;
                   return (
-                    <tr key={rm.id}>
-                      <td className="p-3 font-bold font-mono text-slate-800">{rm.code}</td>
-                      <td className="p-3 font-semibold text-slate-800">{rm.name}</td>
-                      <td className="p-3 text-right font-bold font-mono">{rm.stock_qty.toLocaleString()}</td>
-                      <td className="p-3 text-center text-slate-500">{rm.unit}</td>
-                      <td className="p-3 text-right font-mono text-slate-400">{rm.min_stock}</td>
-                      <td className="p-3 text-center">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    <tr key={rm.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="p-3.5 font-bold font-mono text-slate-800">{rm.code}</td>
+                      <td className="p-3.5 font-bold text-slate-800">{rm.name}</td>
+                      <td className={`p-3.5 text-right font-extrabold font-mono text-xs md:text-sm ${isLow ? 'text-red-600' : 'text-slate-800'}`}>
+                        {rm.stock_qty.toLocaleString()}
+                      </td>
+                      <td className="p-3.5 text-center text-slate-500 font-medium">{rm.unit}</td>
+                      <td className="p-3.5 text-right font-mono text-slate-400 font-semibold">{rm.min_stock}</td>
+                      <td className="p-3.5 text-center">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] md:text-xs font-bold ${
                           isLow 
                             ? "bg-red-50 text-red-700 border border-red-200 animate-pulse" 
                             : "bg-emerald-50 text-emerald-700 border border-emerald-200"
@@ -1427,9 +1716,34 @@ export function InventoryPage({ rawMaterials, inventoryPacks, productionOrders }
                           {isLow ? "🔴 ต่ำกว่าเกณฑ์เตือนภัย" : "🟢 ระดับสต็อกปลอดภัย"}
                         </span>
                       </td>
+                      <td className="p-3.5 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => openRawModal(rm)}
+                            className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                            title="แก้ไขข้อมูลวัตถุดิบ"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleRawDelete(rm.id)}
+                            className="p-1 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                            title="ลบวัตถุดิบ"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
+                {filteredRaw.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-slate-400 italic">
+                      ไม่พบข้อมูลวัตถุดิบเคมีดิบที่ตรงกับความต้องการค้นหา
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -1439,30 +1753,64 @@ export function InventoryPage({ rawMaterials, inventoryPacks, productionOrders }
       {activeTab === "pack" && (
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
+            <table className="w-full text-left text-xs md:text-sm text-slate-650">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 uppercase">
-                  <th className="p-3">รหัสพัสดุ</th>
-                  <th className="p-3">หมวดหมู่</th>
-                  <th className="p-3">ชื่อบรรจุภัณฑ์/หีบห่อ</th>
-                  <th className="p-3 text-right">คงคลังคงเหลือ</th>
-                  <th className="p-3 text-center">หน่วยนับ</th>
-                  <th className="p-3 text-center">ระดับสถานะสต็อก</th>
+                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider font-bold">
+                  <th className="p-3.5">รหัสพัสดุ</th>
+                  <th className="p-3.5">หมวดหมู่</th>
+                  <th className="p-3.5">ชื่อบรรจุภัณฑ์/หีบห่อ</th>
+                  <th className="p-3.5 text-right">คงคลังคงเหลือ</th>
+                  <th className="p-3.5 text-center">หน่วยนับ</th>
+                  <th className="p-3.5 text-center">ระดับสถานะสต็อก</th>
+                  <th className="p-3.5 text-center w-24">ดำเนินการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-sans">
-                {inventoryPacks.map(ip => (
-                  <tr key={ip.id}>
-                    <td className="p-3 font-bold font-mono text-slate-800">{ip.code}</td>
-                    <td className="p-3"><span className="px-2 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-indigo-700 text-[9px] font-bold font-sans">{ip.type}</span></td>
-                    <td className="p-3 font-semibold text-slate-800">{ip.name}</td>
-                    <td className="p-3 text-right font-bold font-mono">{ip.qty.toLocaleString()}</td>
-                    <td className="p-3 text-center text-slate-500">{ip.unit}</td>
-                    <td className="p-3 text-center">
-                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px] font-bold">🟢 มีสินค้าพร้อมใช้</span>
+                {filteredPacks.map(ip => (
+                  <tr key={ip.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="p-3.5 font-bold font-mono text-slate-800">{ip.code}</td>
+                    <td className="p-3.5">
+                      <span className="px-2.5 py-0.5 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-bold font-sans">
+                        {ip.type}
+                      </span>
+                    </td>
+                    <td className="p-3.5 font-bold text-slate-800">{ip.name}</td>
+                    <td className="p-3.5 text-right font-extrabold font-mono text-xs md:text-sm text-slate-800">
+                      {ip.qty.toLocaleString()}
+                    </td>
+                    <td className="p-3.5 text-center text-slate-500 font-medium">{ip.unit}</td>
+                    <td className="p-3.5 text-center">
+                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full text-[10px] md:text-xs font-bold">
+                        🟢 มีสินค้าพร้อมใช้
+                      </span>
+                    </td>
+                    <td className="p-3.5 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => openPackModal(ip)}
+                          className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                          title="แก้ไขข้อมูลพัสดุ"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handlePackDelete(ip.id)}
+                          className="p-1 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                          title="ลบพัสดุบรรจุภัณฑ์"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
+                {filteredPacks.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-slate-400 italic">
+                      ไม่พบข้อมูลบรรจุภัณฑ์สำเร็จรูปที่ต้องการ
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -1472,35 +1820,279 @@ export function InventoryPage({ rawMaterials, inventoryPacks, productionOrders }
       {activeTab === "fg" && (
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
+            <table className="w-full text-left text-xs md:text-sm text-slate-650">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 uppercase">
-                  <th className="p-3">รหัสสินค้าสำเร็จรูป</th>
-                  <th className="p-3">ชื่อผลิตภัณฑ์สำเร็จรูป</th>
-                  <th className="p-3 text-right">จำนวนคลังสินค้า</th>
-                  <th className="p-3 text-center">หน่วยนับ</th>
-                  <th className="p-3 text-center">ล๊อตที่ผลิตเสร็จ</th>
+                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider font-bold">
+                  <th className="p-3.5">รหัสสินค้าสำเร็จรูป</th>
+                  <th className="p-3.5">ชื่อผลิตภัณฑ์สำเร็จรูป</th>
+                  <th className="p-3.5 text-right">จำนวนคลังสินค้า</th>
+                  <th className="p-3.5 text-center">หน่วยนับ</th>
+                  <th className="p-3.5 text-center">ล๊อตที่ผลิตเสร็จ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-sans">
-                {finishedGoods.map(fg => (
-                  <tr key={fg.id}>
-                    <td className="p-3 font-bold font-mono text-slate-800">{fg.code}</td>
-                    <td className="p-3 font-semibold text-slate-800">{fg.name}</td>
-                    <td className="p-3 text-right font-bold font-mono text-blue-600">{fg.qty.toLocaleString()}</td>
-                    <td className="p-3 text-center text-slate-500">{fg.unit}</td>
-                    <td className="p-3 text-center"><span className="px-2 py-0.5 rounded bg-blue-50 border border-blue-100 text-blue-700 font-mono text-[10px] font-bold">{fg.lot}</span></td>
+                {filteredFG.map(fg => (
+                  <tr key={fg.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="p-3.5 font-bold font-mono text-slate-800">{fg.code}</td>
+                    <td className="p-3.5 font-bold text-slate-800">{fg.name}</td>
+                    <td className="p-3.5 text-right font-extrabold font-mono text-xs md:text-sm text-blue-600">
+                      {fg.qty.toLocaleString()}
+                    </td>
+                    <td className="p-3.5 text-center text-slate-500 font-medium">{fg.unit}</td>
+                    <td className="p-3.5 text-center">
+                      <span className="px-2.5 py-0.5 rounded-lg bg-blue-50 border border-blue-100 text-blue-700 font-mono text-[10px] md:text-xs font-bold">
+                        {fg.lot}
+                      </span>
+                    </td>
                   </tr>
                 ))}
-                {finishedGoods.length === 0 && (
+                {filteredFG.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-400">
+                    <td colSpan={5} className="p-8 text-center text-slate-400 italic">
                       ยังไม่มีผลิตภัณฑ์สำเร็จรูปส่งเข้ามาคลังสินค้าสำเร็จรูป
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Raw Material Add/Edit Modal */}
+      {isRawModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-slate-150 bg-slate-50/85">
+              <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-slate-850 flex items-center gap-2">
+                <Boxes className="w-5 h-5 text-blue-600" />
+                {editingRaw ? "แก้ไขข้อมูลวัตถุดิบเคมีดิบ" : "เพิ่มสารเคมีดิบวัตถุดิบใหม่"}
+              </h3>
+              <button 
+                onClick={() => setIsRawModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-650 hover:bg-slate-200/50 rounded-lg cursor-pointer transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRawSubmit} className="flex flex-col flex-1">
+              <div className="p-6 md:p-8 space-y-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">รหัสเคมีดิบ <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={rawCode}
+                      onChange={(e) => setRawCode(e.target.value)}
+                      placeholder="เช่น RM-001"
+                      required
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">หน่วยวัด <span className="text-red-500">*</span></label>
+                    <select
+                      value={rawUnit}
+                      onChange={(e) => setRawUnit(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white cursor-pointer"
+                    >
+                      <option value="ลิตร">ลิตร (Litre)</option>
+                      <option value="กก.">กิโลกรัม (Kg)</option>
+                      <option value="มล.">มิลลิลิตร (ml)</option>
+                      <option value="ชิ้น">ชิ้น (Pcs)</option>
+                      <option value="ม้วน">ม้วน (Roll)</option>
+                      <option value="ถัง">ถัง (Drum)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">ชื่อสารเคมี / สารสกัดวัตถุดิบ <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={rawName}
+                    onChange={(e) => setRawName(e.target.value)}
+                    placeholder="พิมพ์ชื่อสารเคมี หรือชื่อวัตถุดิบทางเคมี..."
+                    required
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all text-slate-800"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">จำนวนรับเข้าคลังแรกเริ่ม</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={rawStockQty}
+                      onChange={(e) => setRawStockQty(parseFloat(e.target.value) || 0)}
+                      placeholder="0"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all text-slate-800 text-right"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">จุดแจ้งเตือนขั้นต่ำปลอดภัย</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={rawMinStock}
+                      onChange={(e) => setRawMinStock(parseFloat(e.target.value) || 0)}
+                      placeholder="10"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all text-slate-800 text-right"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">สถานะการทำรายการ</label>
+                  <select
+                    value={rawStatus}
+                    onChange={(e) => setRawStatus(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold focus:outline-none focus:border-blue-500 bg-white cursor-pointer"
+                  >
+                    <option value="active">เปิดใช้งาน (Active)</option>
+                    <option value="inactive">ปิดระงับใช้ชั่วคราว (Inactive)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="p-5 bg-slate-50 border-t border-slate-150 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsRawModalOpen(false)}
+                  className="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl text-xs md:text-sm font-bold hover:bg-slate-100 transition-all cursor-pointer shadow-sm"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-blue-600/10 cursor-pointer"
+                >
+                  <Save className="w-4 h-4" /> บันทึกวัตถุดิบ
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Packaging Add/Edit Modal */}
+      {isPackModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-slate-150 bg-slate-50/85">
+              <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-slate-850 flex items-center gap-2">
+                <Package className="w-5 h-5 text-blue-600" />
+                {editingPack ? "แก้ไขข้อมูลบรรจุภัณฑ์" : "เพิ่มบรรจุภัณฑ์หีบห่อใหม่"}
+              </h3>
+              <button 
+                onClick={() => setIsPackModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-650 hover:bg-slate-200/50 rounded-lg cursor-pointer transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handlePackSubmit} className="flex flex-col flex-1">
+              <div className="p-6 md:p-8 space-y-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">รหัสบรรจุภัณฑ์ <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={packCode}
+                      onChange={(e) => setPackCode(e.target.value)}
+                      placeholder="เช่น PK-001"
+                      required
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">หมวดหมู่ <span className="text-red-500">*</span></label>
+                    <select
+                      value={packType}
+                      onChange={(e) => setPackType(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white cursor-pointer"
+                    >
+                      <option value="ขวด">ขวด (Bottle)</option>
+                      <option value="ฝา">ฝา (Cap)</option>
+                      <option value="ฉลาก">ฉลาก (Label)</option>
+                      <option value="กล่อง">กล่อง (Box)</option>
+                      <option value="แกลลอน">แกลลอน (Gallon)</option>
+                      <option value="ซอง">ซอง (Pouch)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">ชื่อบรรจุภัณฑ์ / รายละเอียด <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={packName}
+                    onChange={(e) => setPackName(e.target.value)}
+                    placeholder="เช่น ขวด HDPE ขนาด 1 ลิตร พร้อมพิมพ์ลาย..."
+                    required
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all text-slate-800"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">จำนวนคงคลังรับเข้า</label>
+                    <input
+                      type="number"
+                      value={packQty}
+                      onChange={(e) => setPackQty(parseInt(e.target.value, 10) || 0)}
+                      placeholder="0"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all text-slate-800 text-right"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">หน่วยนับ</label>
+                    <input
+                      type="text"
+                      value={packUnit}
+                      onChange={(e) => setPackUnit(e.target.value)}
+                      placeholder="ชิ้น"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white text-slate-800"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">สถานะการทำรายการ</label>
+                  <select
+                    value={packStatus}
+                    onChange={(e) => setPackStatus(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold focus:outline-none focus:border-blue-500 bg-white cursor-pointer"
+                  >
+                    <option value="active">เปิดใช้งาน (Active)</option>
+                    <option value="inactive">ปิดระงับใช้ชั่วคราว (Inactive)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="p-5 bg-slate-50 border-t border-slate-150 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsPackModalOpen(false)}
+                  className="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl text-xs md:text-sm font-bold hover:bg-slate-100 transition-all cursor-pointer shadow-sm"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs md:text-sm font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-blue-600/10 cursor-pointer"
+                >
+                  <Save className="w-4 h-4" /> บันทึกบรรจุภัณฑ์
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

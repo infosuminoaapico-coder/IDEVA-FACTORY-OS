@@ -424,6 +424,28 @@ export async function clientSave(entity: string, id: number, data: any): Promise
       }
     }
 
+    // Keep local memory fallback database synchronized with Supabase
+    if ((memoryDB as any)[entity]) {
+      const idx = (memoryDB as any)[entity].findIndex((item: any) => item.id === savedId);
+      const dataWithId = { ...cleanData, id: savedId };
+      if (entity === "bom_recipes" && materialsToSave !== null) {
+        dataWithId.materials = materialsToSave;
+      }
+      if (entity === "purchase_orders" && itemsToSave !== null) {
+        dataWithId.items = itemsToSave;
+      }
+      if (idx >= 0) {
+        (memoryDB as any)[entity][idx] = { ...(memoryDB as any)[entity][idx], ...dataWithId };
+      } else {
+        if (entity === "customers") {
+          (memoryDB as any)[entity].unshift(dataWithId);
+        } else {
+          (memoryDB as any)[entity].push(dataWithId);
+        }
+      }
+      saveMemory();
+    }
+
     return savedId;
   } catch (err) {
     console.warn(`Supabase client save failed for ${entity}, performing local state save instead:`, err);
@@ -469,6 +491,10 @@ export async function clientDelete(entity: string, id: number): Promise<boolean>
     }
     const { error } = await supabase.from(table).delete().eq("id", id);
     if (error) throw error;
+    if ((memoryDB as any)[entity]) {
+      (memoryDB as any)[entity] = (memoryDB as any)[entity].filter((item: any) => item.id !== id);
+      saveMemory();
+    }
     return true;
   } catch (err) {
     console.warn(`Supabase client delete failed for ${entity}, deleting from local memory instead:`, err);

@@ -328,6 +328,25 @@ export default function App() {
             rawMaterials={rawMaterials}
             inventoryPacks={inventoryPacks}
             productionOrders={productionOrders}
+            onSaveRawMaterial={async (payload) => {
+              await handleSave("raw_materials", payload, "บันทึกข้อมูลวัตถุดิบเคมีดิบรอยร้อยแล้ว!");
+            }}
+            onDeleteRawMaterial={async (id) => {
+              await handleDelete("raw_materials", id, "ลบข้อมูลวัตถุดิบเคมีดิบเรียบร้อยแล้ว!");
+            }}
+            onSaveInventoryPack={async (payload) => {
+              if (payload.id) {
+                setInventoryPacks(prev => prev.map(p => p.id === payload.id ? payload : p));
+              } else {
+                const nextId = inventoryPacks.length > 0 ? Math.max(...inventoryPacks.map(p => p.id)) + 1 : 1;
+                setInventoryPacks(prev => [...prev, { ...payload, id: nextId }]);
+              }
+              showToast("บันทึกข้อมูลบรรจุภัณฑ์สำเร็จ!", "success");
+            }}
+            onDeleteInventoryPack={async (id) => {
+              setInventoryPacks(prev => prev.filter(p => p.id !== id));
+              showToast("ลบข้อมูลบรรจุภัณฑ์สำเร็จ!", "success");
+            }}
           />
         );
       case "report":
