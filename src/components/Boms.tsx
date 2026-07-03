@@ -246,12 +246,19 @@ export default function Boms({
       version,
       status,
       notes: JSON.stringify(validInstructions),
-      materials: validMaterials.map(m => ({
-        material_name: m.material_name,
-        quantity: m.quantity,
-        unit: m.unit,
-        notes: m.notes || ""
-      }))
+      materials: validMaterials.map(m => {
+        const matchedRm = rawMaterials.find(
+          rm => rm.name.toLowerCase() === m.material_name.toLowerCase() || 
+                (m.material_code && rm.code.toLowerCase() === m.material_code.toLowerCase())
+        );
+        return {
+          raw_material_id: matchedRm ? matchedRm.id : null,
+          material_name: m.material_name,
+          quantity: m.quantity,
+          unit: m.unit,
+          notes: m.notes || ""
+        };
+      })
     });
     setIsEditModalOpen(false);
   };

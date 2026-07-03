@@ -134,10 +134,21 @@ export default function App() {
     const grnLogs = await clientGetList("grns");
     const checks = await clientGetList("prechecks");
 
+    // Enrich BOM Recipes with Product Info (code, name, type)
+    const enrichedRecipes = recipes.map(r => {
+      const matchedProd = prods.find(p => p.id === r.product_id);
+      return {
+        ...r,
+        product_code: matchedProd ? matchedProd.code : (r.product_code || "-"),
+        product_name: matchedProd ? matchedProd.name : (r.product_name || "-"),
+        product_type: matchedProd ? matchedProd.type : (r.product_type || "-")
+      };
+    });
+
     setCustomers(custs);
     setProducts(prods);
     setRawMaterials(mats);
-    setBomRecipes(recipes);
+    setBomRecipes(enrichedRecipes);
     setProductionOrders(pos);
     setPackingOrders(packOrders);
     setPurchaseOrders(pOrders);
