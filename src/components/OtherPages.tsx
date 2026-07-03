@@ -381,13 +381,13 @@ export function ProductionPage({
   const getStatusBadge = (s: string) => {
     switch (s) {
       case "done":
-        return <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px] font-bold">ผลิตเสร็จ</span>;
+        return <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px] font-normal">ผลิตเสร็จ</span>;
       case "running":
-        return <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full text-[10px] font-bold animate-pulse">กำลังผลิต</span>;
+        return <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full text-[10px] font-normal animate-pulse">กำลังผลิต</span>;
       case "pending":
-        return <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full text-[10px] font-bold">รอผลิต</span>;
+        return <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full text-[10px] font-normal">รอผลิต</span>;
       default:
-        return <span className="bg-slate-50 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-full text-[10px] font-bold">ยกเลิก</span>;
+        return <span className="bg-slate-50 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-full text-[10px] font-normal">ยกเลิก</span>;
     }
   };
 
@@ -430,21 +430,21 @@ export function ProductionPage({
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-[#cccccc] rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700 border-collapse border border-slate-100">
+          <table className="w-full text-left text-xs text-[#3c4043] border-collapse">
             <thead>
-              <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px] uppercase">
-                <th className="p-2.5 border border-slate-200 text-center w-12">ลำดับ</th>
-                <th className="p-2.5 border border-slate-200">เลขที่</th>
-                <th className="p-2.5 border border-slate-200">วันที่เริ่ม</th>
-                <th className="p-2.5 border border-slate-200">ลูกค้า / แบรนด์</th>
-                <th className="p-2.5 border border-slate-200">สินค้าที่สั่งผลิต</th>
-                <th className="p-2.5 border border-slate-200 text-right">จำนวนผลิต</th>
-                <th className="p-2.5 border border-slate-200">ผู้รับผิดชอบ</th>
-                <th className="p-2.5 border border-slate-200">วันกำหนดส่ง</th>
-                <th className="p-2.5 border border-slate-200 text-center">สถานะ</th>
-                <th className="p-2.5 border border-slate-200 text-center w-80">ดำเนินการขั้นตอน / แก้ไข</th>
+              <tr className="bg-[#f1f3f4] text-[11px] text-[#3c4043]">
+                <th className="p-2 border border-[#cccccc] font-normal text-center w-12">ลำดับ</th>
+                <th className="p-2 border border-[#cccccc] font-normal">เลขที่ใบสั่ง</th>
+                <th className="p-2 border border-[#cccccc] font-normal">วันที่เริ่ม</th>
+                <th className="p-2 border border-[#cccccc] font-normal">ลูกค้า / แบรนด์</th>
+                <th className="p-2 border border-[#cccccc] font-normal">สินค้าที่สั่งผลิต</th>
+                <th className="p-2 border border-[#cccccc] font-normal text-right">จำนวนผลิต</th>
+                <th className="p-2 border border-[#cccccc] font-normal">ผู้รับผิดชอบ</th>
+                <th className="p-2 border border-[#cccccc] font-normal">วันกำหนดส่ง</th>
+                <th className="p-2 border border-[#cccccc] font-normal text-center">สถานะ</th>
+                <th className="p-2 border border-[#cccccc] font-normal text-center w-80">ดำเนินการขั้นตอน / แก้ไข</th>
               </tr>
             </thead>
             <tbody>
@@ -455,22 +455,22 @@ export function ProductionPage({
                 const prodDisp = prod ? `${prod.name} (${prod.code})` : (po.product_name || "ไม่ได้ระบุ");
 
                 return (
-                  <tr key={po.id} className="odd:bg-white even:bg-slate-50/60 hover:bg-blue-50/30 transition-colors">
-                    <td className="p-2 border border-slate-200/60 text-center font-mono text-slate-400">{index + 1}</td>
-                    <td className="p-2 border border-slate-200/60 font-bold font-mono text-blue-600">{po.code}</td>
-                    <td className="p-2 border border-slate-200/60 text-slate-400 font-mono">{po.date}</td>
-                    <td className="p-2 border border-slate-200/60 font-semibold text-slate-800">{custDisp}</td>
-                    <td className="p-2 border border-slate-200/60 text-slate-700 font-medium">{prodDisp}</td>
-                    <td className="p-2 border border-slate-200/60 font-semibold font-mono text-right">{po.quantity.toLocaleString()} {po.unit}</td>
-                    <td className="p-2 border border-slate-200/60 font-medium text-slate-600">{po.staff}</td>
-                    <td className="p-2 border border-slate-200/60 text-indigo-600 font-medium font-mono">{po.due_date}</td>
-                    <td className="p-2 border border-slate-200/60 text-center">{getStatusBadge(po.status)}</td>
-                    <td className="p-2 border border-slate-200/60 text-center">
+                  <tr key={po.id} className="odd:bg-white even:bg-[#f8f9fa] hover:bg-[#e8f0fe]/70 transition-colors">
+                    <td className="p-2 border border-[#e0e0e0] text-center font-mono text-slate-500 font-normal">{index + 1}</td>
+                    <td className="p-2 border border-[#e0e0e0] font-normal font-mono text-blue-600">{po.code}</td>
+                    <td className="p-2 border border-[#e0e0e0] text-slate-500 font-mono font-normal">{po.date}</td>
+                    <td className="p-2 border border-[#e0e0e0] font-normal text-slate-800">{custDisp}</td>
+                    <td className="p-2 border-[#e0e0e0] border text-slate-700 font-normal">{prodDisp}</td>
+                    <td className="p-2 border border-[#e0e0e0] font-normal font-mono text-right">{po.quantity.toLocaleString()} {po.unit}</td>
+                    <td className="p-2 border border-[#e0e0e0] font-normal text-slate-600">{po.staff}</td>
+                    <td className="p-2 border border-[#e0e0e0] text-indigo-600 font-normal font-mono">{po.due_date}</td>
+                    <td className="p-2 border border-[#e0e0e0] text-center">{getStatusBadge(po.status)}</td>
+                    <td className="p-2 border border-[#e0e0e0] text-center">
                       <div className="flex items-center justify-center gap-1.5 flex-wrap">
                         {/* Status update buttons */}
                         <button
                           onClick={() => handleUpdateStatus(po, "pending")}
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+                          className={`px-2 py-0.5 rounded text-[10px] font-normal transition-all border ${
                             po.status === "pending"
                               ? "bg-amber-600 text-white border-amber-600 shadow-sm"
                               : "bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200"
@@ -480,9 +480,9 @@ export function ProductionPage({
                         </button>
                         <button
                           onClick={() => handleUpdateStatus(po, "running")}
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+                          className={`px-2 py-0.5 rounded text-[10px] font-normal transition-all border ${
                             po.status === "running"
-                              ? "bg-blue-600 text-white border-blue-600 shadow-sm animate-pulse"
+                              ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                               : "bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
                           }`}
                         >
@@ -490,7 +490,7 @@ export function ProductionPage({
                         </button>
                         <button
                           onClick={() => handleUpdateStatus(po, "done")}
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+                          className={`px-2 py-0.5 rounded text-[10px] font-normal transition-all border ${
                             po.status === "done"
                               ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
                               : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
@@ -1681,56 +1681,56 @@ export function InventoryPage({
       </div>
 
       {activeTab === "raw" && (
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-[#cccccc] rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs md:text-sm text-slate-650">
+            <table className="w-full text-left text-xs text-[#3c4043] border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider font-bold">
-                  <th className="p-3.5">รหัสเคมีดิบ</th>
-                  <th className="p-3.5">ชื่อสารสกัดเคมี</th>
-                  <th className="p-3.5 text-right">จำนวนคงคลัง</th>
-                  <th className="p-3.5 text-center">หน่วยนับ</th>
-                  <th className="p-3.5 text-right">จำนวนขั้นต่ำปลอดภัย</th>
-                  <th className="p-3.5 text-center">ระดับสถานะสต็อก</th>
-                  <th className="p-3.5 text-center w-24">ดำเนินการ</th>
+                <tr className="bg-[#f1f3f4] text-[11px] text-[#3c4043]">
+                  <th className="p-2 border border-[#cccccc] font-normal">รหัสเคมีดิบ</th>
+                  <th className="p-2 border border-[#cccccc] font-normal">ชื่อสารสกัดเคมี</th>
+                  <th className="p-2 border border-[#cccccc] font-normal text-right">จำนวนคงคลัง</th>
+                  <th className="p-2 border border-[#cccccc] font-normal text-center">หน่วยนับ</th>
+                  <th className="p-2 border border-[#cccccc] font-normal text-right">จำนวนขั้นต่ำปลอดภัย</th>
+                  <th className="p-2 border border-[#cccccc] font-normal text-center">ระดับสถานะสต็อก</th>
+                  <th className="p-2 border border-[#cccccc] font-normal text-center w-24">ดำเนินการ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-sans">
+              <tbody>
                 {filteredRaw.map(rm => {
                   const isLow = rm.stock_qty <= rm.min_stock;
                   return (
-                    <tr key={rm.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="p-3.5 font-bold font-mono text-slate-800">{rm.code}</td>
-                      <td className="p-3.5 font-bold text-slate-800">{rm.name}</td>
-                      <td className={`p-3.5 text-right font-extrabold font-mono text-xs md:text-sm ${isLow ? 'text-red-600' : 'text-slate-800'}`}>
+                    <tr key={rm.id} className="odd:bg-white even:bg-[#f8f9fa] hover:bg-[#e8f0fe]/70 transition-colors">
+                      <td className="p-2 border border-[#e0e0e0] font-normal font-mono text-slate-800">{rm.code}</td>
+                      <td className="p-2 border border-[#e0e0e0] font-normal text-slate-800">{rm.name}</td>
+                      <td className={`p-2 border border-[#e0e0e0] text-right font-normal font-mono ${isLow ? 'text-red-600 font-normal' : 'text-slate-800'}`}>
                         {rm.stock_qty.toLocaleString()}
                       </td>
-                      <td className="p-3.5 text-center text-slate-500 font-medium">{rm.unit}</td>
-                      <td className="p-3.5 text-right font-mono text-slate-400 font-semibold">{rm.min_stock}</td>
-                      <td className="p-3.5 text-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] md:text-xs font-bold ${
+                      <td className="p-2 border border-[#e0e0e0] text-center text-slate-500 font-normal">{rm.unit}</td>
+                      <td className="p-2 border border-[#e0e0e0] text-right font-mono text-slate-400 font-normal">{rm.min_stock}</td>
+                      <td className="p-2 border border-[#e0e0e0] text-center">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-normal ${
                           isLow 
-                            ? "bg-red-50 text-red-700 border border-red-200 animate-pulse" 
-                            : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            ? "bg-red-50 text-red-700 border border-red-250" 
+                            : "bg-emerald-50 text-emerald-700 border border-emerald-250"
                         }`}>
                           {isLow ? "🔴 ต่ำกว่าเกณฑ์เตือนภัย" : "🟢 ระดับสต็อกปลอดภัย"}
                         </span>
                       </td>
-                      <td className="p-3.5 text-center">
+                      <td className="p-2 border border-[#e0e0e0] text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => openRawModal(rm)}
                             className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
                             title="แก้ไขข้อมูลวัตถุดิบ"
                           >
-                            <Edit2 className="w-4 h-4" />
+                            <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleRawDelete(rm.id)}
                             className="p-1 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
                             title="ลบวัตถุดิบ"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -1739,7 +1739,7 @@ export function InventoryPage({
                 })}
                 {filteredRaw.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-400 italic">
+                    <td colSpan={7} className="p-8 text-center text-slate-400 border border-[#e0e0e0] font-normal">
                       ไม่พบข้อมูลวัตถุดิบเคมีดิบที่ตรงกับความต้องการค้นหา
                     </td>
                   </tr>
@@ -1751,54 +1751,54 @@ export function InventoryPage({
       )}
 
       {activeTab === "pack" && (
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-[#cccccc] rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs md:text-sm text-slate-650">
+            <table className="w-full text-left text-xs text-[#3c4043] border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider font-bold">
-                  <th className="p-3.5">รหัสพัสดุ</th>
-                  <th className="p-3.5">หมวดหมู่</th>
-                  <th className="p-3.5">ชื่อบรรจุภัณฑ์/หีบห่อ</th>
-                  <th className="p-3.5 text-right">คงคลังคงเหลือ</th>
-                  <th className="p-3.5 text-center">หน่วยนับ</th>
-                  <th className="p-3.5 text-center">ระดับสถานะสต็อก</th>
-                  <th className="p-3.5 text-center w-24">ดำเนินการ</th>
+                <tr className="bg-[#f1f3f4] text-[11px] text-[#3c4043]">
+                  <th className="p-2 border border-[#cccccc] font-normal">รหัสพัสดุ</th>
+                  <th className="p-2 border border-[#cccccc] font-normal">หมวดหมู่</th>
+                  <th className="p-2 border border-[#cccccc] font-normal">ชื่อบรรจุภัณฑ์/หีบห่อ</th>
+                  <th className="p-2 border border-[#cccccc] font-normal text-right">คงคลังคงเหลือ</th>
+                  <th className="p-2 border border-[#cccccc] font-normal text-center">หน่วยนับ</th>
+                  <th className="p-2 border border-[#cccccc] font-normal text-center">ระดับสถานะสต็อก</th>
+                  <th className="p-2 border border-[#cccccc] font-normal text-center w-24">ดำเนินการ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-sans">
+              <tbody>
                 {filteredPacks.map(ip => (
-                  <tr key={ip.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-3.5 font-bold font-mono text-slate-800">{ip.code}</td>
-                    <td className="p-3.5">
-                      <span className="px-2.5 py-0.5 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-bold font-sans">
+                  <tr key={ip.id} className="odd:bg-white even:bg-[#f8f9fa] hover:bg-[#e8f0fe]/70 transition-colors">
+                    <td className="p-2 border border-[#e0e0e0] font-normal font-mono text-slate-800">{ip.code}</td>
+                    <td className="p-2 border border-[#e0e0e0]">
+                      <span className="px-2 py-0.5 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-normal font-sans">
                         {ip.type}
                       </span>
                     </td>
-                    <td className="p-3.5 font-bold text-slate-800">{ip.name}</td>
-                    <td className="p-3.5 text-right font-extrabold font-mono text-xs md:text-sm text-slate-800">
+                    <td className="p-2 border border-[#e0e0e0] font-normal text-slate-800">{ip.name}</td>
+                    <td className="p-2 border border-[#e0e0e0] text-right font-normal font-mono text-slate-800">
                       {ip.qty.toLocaleString()}
                     </td>
-                    <td className="p-3.5 text-center text-slate-500 font-medium">{ip.unit}</td>
-                    <td className="p-3.5 text-center">
-                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full text-[10px] md:text-xs font-bold">
+                    <td className="p-2 border border-[#e0e0e0] text-center text-slate-500 font-normal">{ip.unit}</td>
+                    <td className="p-2 border border-[#e0e0e0] text-center">
+                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-[10px] font-normal">
                         🟢 มีสินค้าพร้อมใช้
                       </span>
                     </td>
-                    <td className="p-3.5 text-center">
+                    <td className="p-2 border border-[#e0e0e0] text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => openPackModal(ip)}
                           className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
                           title="แก้ไขข้อมูลพัสดุ"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handlePackDelete(ip.id)}
                           className="p-1 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
                           title="ลบพัสดุบรรจุภัณฑ์"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -1806,7 +1806,7 @@ export function InventoryPage({
                 ))}
                 {filteredPacks.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-400 italic">
+                    <td colSpan={7} className="p-8 text-center text-slate-400 border border-[#e0e0e0] font-normal">
                       ไม่พบข้อมูลบรรจุภัณฑ์สำเร็จรูปที่ต้องการ
                     </td>
                   </tr>
@@ -1818,29 +1818,29 @@ export function InventoryPage({
       )}
 
       {activeTab === "fg" && (
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-[#cccccc] rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs md:text-sm text-slate-650">
+            <table className="w-full text-left text-xs text-[#3c4043] border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider font-bold">
-                  <th className="p-3.5">รหัสสินค้าสำเร็จรูป</th>
-                  <th className="p-3.5">ชื่อผลิตภัณฑ์สำเร็จรูป</th>
-                  <th className="p-3.5 text-right">จำนวนคลังสินค้า</th>
-                  <th className="p-3.5 text-center">หน่วยนับ</th>
-                  <th className="p-3.5 text-center">ล๊อตที่ผลิตเสร็จ</th>
+                <tr className="bg-[#f1f3f4] text-[11px] text-[#3c4043]">
+                  <th className="p-2 border border-[#cccccc] font-normal">รหัสสินค้าสำเร็จรูป</th>
+                  <th className="p-2 border border-[#cccccc] font-normal">ชื่อผลิตภัณฑ์สำเร็จรูป</th>
+                  <th className="p-2 border border-[#cccccc] font-normal text-right">จำนวนคลังสินค้า</th>
+                  <th className="p-2 border border-[#cccccc] font-normal text-center">หน่วยนับ</th>
+                  <th className="p-2 border border-[#cccccc] font-normal text-center">ล๊อตที่ผลิตเสร็จ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-sans">
+              <tbody>
                 {filteredFG.map(fg => (
-                  <tr key={fg.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-3.5 font-bold font-mono text-slate-800">{fg.code}</td>
-                    <td className="p-3.5 font-bold text-slate-800">{fg.name}</td>
-                    <td className="p-3.5 text-right font-extrabold font-mono text-xs md:text-sm text-blue-600">
+                  <tr key={fg.id} className="odd:bg-white even:bg-[#f8f9fa] hover:bg-[#e8f0fe]/70 transition-colors">
+                    <td className="p-2 border border-[#e0e0e0] font-normal font-mono text-slate-800">{fg.code}</td>
+                    <td className="p-2 border border-[#e0e0e0] font-normal text-slate-800">{fg.name}</td>
+                    <td className="p-2 border border-[#e0e0e0] text-right font-normal font-mono text-blue-600">
                       {fg.qty.toLocaleString()}
                     </td>
-                    <td className="p-3.5 text-center text-slate-500 font-medium">{fg.unit}</td>
-                    <td className="p-3.5 text-center">
-                      <span className="px-2.5 py-0.5 rounded-lg bg-blue-50 border border-blue-100 text-blue-700 font-mono text-[10px] md:text-xs font-bold">
+                    <td className="p-2 border border-[#e0e0e0] text-center text-slate-500 font-normal">{fg.unit}</td>
+                    <td className="p-2 border border-[#e0e0e0] text-center">
+                      <span className="px-2 py-0.5 rounded-lg bg-blue-50 border border-blue-100 text-blue-700 font-mono text-[10px] font-normal">
                         {fg.lot}
                       </span>
                     </td>
@@ -1848,7 +1848,7 @@ export function InventoryPage({
                 ))}
                 {filteredFG.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-400 italic">
+                    <td colSpan={5} className="p-8 text-center text-slate-400 border border-[#e0e0e0] font-normal">
                       ยังไม่มีผลิตภัณฑ์สำเร็จรูปส่งเข้ามาคลังสินค้าสำเร็จรูป
                     </td>
                   </tr>

@@ -225,6 +225,7 @@ export default function App() {
             products={products}
             rawMaterials={rawMaterials}
             productionOrders={productionOrders}
+            customers={customers}
             onSaveBom={async (b) => handleSave("bom_recipes", b, "บันทึกสูตรการผลิต (BOM) เรียบร้อยแล้ว!")}
             onDeleteBom={async (id) => handleDelete("bom_recipes", id, "ลบสูตรการผลิต (BOM) เรียบร้อยแล้ว!")}
           />

@@ -13,15 +13,19 @@ import {
   Layers,
   Sparkles,
   Info,
-  ChevronDown
+  ChevronDown,
+  Printer,
+  Trash
 } from "lucide-react";
-import { BomRecipe, Product, RawMaterial, ProductionOrder } from "../types";
+import { BomRecipe, Product, RawMaterial, ProductionOrder, Customer } from "../types";
+import BomPrint from "./BomPrint";
 
 interface BomsProps {
   bomRecipes: BomRecipe[];
   products: Product[];
   rawMaterials: RawMaterial[];
   productionOrders: ProductionOrder[];
+  customers: Customer[];
   onSaveBom: (bom: any) => Promise<void>;
   onDeleteBom: (id: number) => Promise<void>;
 }
@@ -31,6 +35,7 @@ export default function Boms({
   products,
   rawMaterials,
   productionOrders,
+  customers,
   onSaveBom,
   onDeleteBom
 }: BomsProps) {
@@ -40,21 +45,43 @@ export default function Boms({
   const [selectedBom, setSelectedBom] = useState<BomRecipe | null>(null);
   const [editingBom, setEditingBom] = useState<BomRecipe | null>(null);
 
+  // Print Popup states
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printSelectedBom, setPrintSelectedBom] = useState<BomRecipe | null>(null);
+
   // Form states
   const [productId, setProductId] = useState<number | "">("");
-  const [productSearch, setProductSearch] = useState("");
-  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
-  const [openDropdownIdx, setOpenDropdownIdx] = useState<number | null>(null);
+  const [productCode, setProductCode] = useState("");
+  const [productName, setProductName] = useState("");
+  const [isProductCodeDropdownOpen, setIsProductCodeDropdownOpen] = useState(false);
+  const [isProductNameDropdownOpen, setIsProductNameDropdownOpen] = useState(false);
+
+  // Dropdown indices for each material row
+  const [openCodeDropdownIdx, setOpenCodeDropdownIdx] = useState<number | null>(null);
+  const [openNameDropdownIdx, setOpenNameDropdownIdx] = useState<number | null>(null);
+
   const [version, setVersion] = useState("v1.0");
   const [status, setStatus] = useState("active");
-  const [notes, setNotes] = useState("");
-  const [materials, setMaterials] = useState<Array<{ material_name: string; quantity: number; unit: string; notes?: string }>>([
-    { material_name: "", quantity: 0, unit: "ลิตร" }
+
+  // Dynamic Instructions List (Step-by-Step)
+  const [instructions, setInstructions] = useState<Array<{ instruction: string }>>([
+    { instruction: "" }
+  ]);
+
+  // materials array with both code and name
+  const [materials, setMaterials] = useState<Array<{ 
+    material_code: string; 
+    material_name: string; 
+    quantity: number; 
+    unit: string; 
+    notes?: string 
+  }>>([
+    { material_code: "", material_name: "", quantity: 0, unit: "ลิตร" }
   ]);
 
   // Handle Dynamic rows inside formulation
   const handleAddMaterialRow = () => {
-    setMaterials([...materials, { material_name: "", quantity: 0, unit: "ลิตร" }]);
+    setMaterials([...materials, { material_code: "", material_name: "", quantity: 0, unit: "ลิตร" }]);
   };
 
   const handleRemoveMaterialRow = (index: number) => {
@@ -67,14 +94,38 @@ export default function Boms({
     const updated = [...materials];
     updated[index] = { ...updated[index], [field]: value };
     
-    // Automatically match unit if selected raw material matches cache
-    if (field === "material_name") {
-      const matched = rawMaterials.find(r => r.name === value);
+    // Automatically match code/name/unit if selected raw material matches cache
+    if (field === "material_code") {
+      const matched = rawMaterials.find(r => r.code.toLowerCase() === value.trim().toLowerCase());
       if (matched) {
+        updated[index].material_name = matched.name;
+        updated[index].unit = matched.unit;
+      }
+    } else if (field === "material_name") {
+      const matched = rawMaterials.find(r => r.name.toLowerCase() === value.trim().toLowerCase());
+      if (matched) {
+        updated[index].material_code = matched.code;
         updated[index].unit = matched.unit;
       }
     }
     setMaterials(updated);
+  };
+
+  // Handle Dynamic instructions rows
+  const handleAddInstructionRow = () => {
+    setInstructions([...instructions, { instruction: "" }]);
+  };
+
+  const handleRemoveInstructionRow = (index: number) => {
+    const updated = [...instructions];
+    updated.splice(index, 1);
+    setInstructions(updated);
+  };
+
+  const handleInstructionChange = (index: number, value: string) => {
+    const updated = [...instructions];
+    updated[index] = { instruction: value };
+    setInstructions(updated);
   };
 
   // List of standard units
@@ -126,28 +177,51 @@ export default function Boms({
     if (bom) {
       setEditingBom(clone ? null : bom);
       setProductId(bom.product_id);
+      
       const matchedProd = products.find(p => p.id === bom.product_id);
-      setProductSearch(matchedProd ? `${matchedProd.code} - ${matchedProd.name}` : "");
+      setProductCode(matchedProd ? matchedProd.code : (bom.product_code || ""));
+      setProductName(matchedProd ? matchedProd.name : (bom.product_name || ""));
       
       // Auto-increment version if editing, otherwise reset to v1.0 if cloning
       const nextVer = clone ? "v1.0" : incrementVersion(bom.version);
       setVersion(nextVer);
       setStatus(bom.status);
-      setNotes(bom.notes || "");
-      setMaterials(bom.materials.map(m => ({
-        material_name: m.material_name,
-        quantity: m.quantity,
-        unit: m.unit,
-        notes: m.notes || ""
-      })));
+      
+      // Parse instructions from bom.notes (JSON or string fallback)
+      let parsedInstructions = [{ instruction: "" }];
+      if (bom.notes) {
+        try {
+          if (bom.notes.trim().startsWith("[")) {
+            parsedInstructions = JSON.parse(bom.notes);
+          } else {
+            parsedInstructions = [{ instruction: bom.notes }];
+          }
+        } catch (e) {
+          parsedInstructions = [{ instruction: bom.notes }];
+        }
+      }
+      setInstructions(parsedInstructions);
+
+      // Map materials
+      setMaterials(bom.materials.map(m => {
+        const matchedRm = rawMaterials.find(rm => rm.name.toLowerCase() === m.material_name.toLowerCase());
+        return {
+          material_code: matchedRm ? matchedRm.code : "",
+          material_name: m.material_name,
+          quantity: m.quantity,
+          unit: m.unit,
+          notes: m.notes || ""
+        };
+      }));
     } else {
       setEditingBom(null);
       setProductId("");
-      setProductSearch("");
+      setProductCode("");
+      setProductName("");
       setVersion("v1.0");
       setStatus("active");
-      setNotes("");
-      setMaterials([{ material_name: "", quantity: 0, unit: "ลิตร" }]);
+      setInstructions([{ instruction: "" }]);
+      setMaterials([{ material_code: "", material_name: "", quantity: 0, unit: "ลิตร" }]);
     }
     setIsEditModalOpen(true);
   };
@@ -163,13 +237,21 @@ export default function Boms({
       return;
     }
 
+    // Filter out empty instruction lines
+    const validInstructions = instructions.filter(inst => inst.instruction.trim());
+
     await onSaveBom({
       id: editingBom ? editingBom.id : 0,
       product_id: Number(productId),
       version,
       status,
-      notes,
-      materials: validMaterials
+      notes: JSON.stringify(validInstructions),
+      materials: validMaterials.map(m => ({
+        material_name: m.material_name,
+        quantity: m.quantity,
+        unit: m.unit,
+        notes: m.notes || ""
+      }))
     });
     setIsEditModalOpen(false);
   };
@@ -211,18 +293,18 @@ export default function Boms({
       </div>
 
       {/* Formulas Table */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-slate-250 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700 border-collapse border border-slate-100">
+          <table className="w-full text-left text-xs text-slate-600 border-collapse border border-slate-200">
             <thead>
-              <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px] uppercase">
-                <th className="p-2.5 border border-slate-200 text-center w-12">ลำดับ</th>
-                <th className="p-2.5 border border-slate-200">รหัสสินค้า</th>
-                <th className="p-2.5 border border-slate-200">ชื่อสินค้าที่ผลิต</th>
-                <th className="p-2.5 border border-slate-200 text-center w-28">เวอร์ชันสูตร</th>
-                <th className="p-2.5 border border-slate-200 text-right bg-blue-50/20 w-44">ผลิตไปแล้ว (Already Produced)</th>
-                <th className="p-2.5 border border-slate-200 text-center w-28">สถานะ</th>
-                <th className="p-2.5 border border-slate-200 text-center w-48">การจัดการ</th>
+              <tr className="bg-slate-100 text-[11px] text-slate-700 tracking-wider">
+                <th className="p-2 border border-slate-200 font-normal text-center w-12">ลำดับ</th>
+                <th className="p-2 border border-slate-200 font-normal">รหัสสินค้า</th>
+                <th className="p-2 border border-slate-200 font-normal">ชื่อสินค้าที่ผลิต</th>
+                <th className="p-2 border border-slate-200 font-normal text-center w-28">เวอร์ชันสูตร</th>
+                <th className="p-2 border border-slate-200 font-normal text-right w-44">ผลิตไปแล้ว (Already Produced)</th>
+                <th className="p-2 border border-slate-200 font-normal text-center w-28">สถานะ</th>
+                <th className="p-2 border border-slate-200 font-normal text-center w-48">การจัดการ</th>
               </tr>
             </thead>
             <tbody>
@@ -232,26 +314,26 @@ export default function Boms({
                 const hasProduced = stats.qty > 0;
                 
                 return (
-                  <tr key={b.id} className="odd:bg-white even:bg-slate-50/60 hover:bg-blue-50/30 transition-colors">
-                    <td className="p-2 border border-slate-200/60 text-center font-mono text-slate-400">{index + 1}</td>
-                    <td className="p-2 border border-slate-200/60 font-bold font-mono text-slate-800">{b.product_code || "-"}</td>
-                    <td className="p-2 border border-slate-200/60">
+                  <tr key={b.id} className="odd:bg-white even:bg-[#f2f6fc] hover:bg-blue-50/55 transition-colors">
+                    <td className="p-2 border border-slate-200 text-center font-mono text-slate-500 font-normal">{index + 1}</td>
+                    <td className="p-2 border border-slate-200 font-normal font-mono text-slate-800">{b.product_code || "-"}</td>
+                    <td className="p-2 border border-slate-200">
                       <div>
-                        <span className="font-semibold text-slate-800">{b.product_name || "-"}</span>
+                        <span className="font-normal text-slate-800">{b.product_name || "-"}</span>
                         {b.notes && (
                           <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-xs">{b.notes}</p>
                         )}
                       </div>
                     </td>
-                    <td className="p-2 border border-slate-200/60 text-center font-semibold font-mono text-slate-500">
+                    <td className="p-2 border border-slate-200 text-center font-normal font-mono text-slate-500">
                       <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md text-[11px]">
                         {b.version}
                       </span>
                     </td>
-                    <td className="p-2 border border-slate-200/60 text-right font-semibold bg-blue-50/10">
+                    <td className="p-2 border border-slate-200 text-right font-normal">
                       {hasProduced ? (
                         <div className="flex flex-col items-end">
-                          <span className="text-blue-700 font-bold font-mono">
+                          <span className="text-blue-700 font-normal font-mono">
                             {stats.qty.toLocaleString()} {b.product_type === "Powder" ? "กก." : "ลิตร"}
                           </span>
                           <span className="text-[9px] text-slate-400 font-sans mt-0.5">
@@ -262,8 +344,8 @@ export default function Boms({
                         <span className="text-slate-400 font-normal text-[11px] font-sans">ยังไม่มีประวัติการผลิต</span>
                       )}
                     </td>
-                    <td className="p-2 border border-slate-200/60 text-center">
-                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    <td className="p-2 border border-slate-200 text-center">
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-normal px-2 py-0.5 rounded-full border ${
                         b.status === "active"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                           : b.status === "test"
@@ -273,32 +355,32 @@ export default function Boms({
                         {b.status === "active" ? "เปิดใช้งาน" : b.status === "test" ? "ทดสอบ" : "ปิดใช้งาน"}
                       </span>
                     </td>
-                    <td className="p-2 border border-slate-200/60 text-center">
+                    <td className="p-2 border border-slate-200 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => handleViewDetails(b)}
-                          className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all"
+                          className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-normal flex items-center gap-1 transition-all"
                         >
                           <Eye className="w-3.5 h-3.5" /> ดูสูตร
                         </button>
                         <button
                           onClick={() => openEditModal(b, false)}
                           title="แก้ไขสูตร"
-                          className="p-1.5 text-amber-600 hover:bg-amber-50 hover:text-amber-800 rounded-lg transition-all"
+                          className="p-1 text-amber-600 hover:bg-amber-50 hover:text-amber-800 rounded-lg transition-all"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => openEditModal(b, true)}
                           title="Clone คัดลอกสูตร"
-                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 rounded-lg transition-all"
+                          className="p-1 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 rounded-lg transition-all"
                         >
                           <Copy className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handleDelete(b.id)}
                           title="ลบ"
-                          className="p-1.5 text-red-600 hover:bg-red-50 hover:text-red-800 rounded-lg transition-all"
+                          className="p-1 text-red-600 hover:bg-red-50 hover:text-red-800 rounded-lg transition-all"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -309,7 +391,7 @@ export default function Boms({
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400">
+                  <td colSpan={7} className="p-8 text-center text-slate-400 border border-slate-200">
                     ไม่พบสูตรการผลิตที่ค้นหา
                   </td>
                 </tr>
@@ -417,15 +499,35 @@ export default function Boms({
               </div>
 
               {selectedBom.notes && (
-                <div className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200 flex items-start gap-1.5 font-sans">
-                  <Info className="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
-                  <span><strong>บันทึกสูตรเพิ่มเติม:</strong> {selectedBom.notes}</span>
+                <div className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200 flex flex-col gap-1.5 font-sans">
+                  <span className="font-bold text-slate-800">วิธีการผสมและเตรียมสารเคมี:</span>
+                  {selectedBom.notes.trim().startsWith("[") ? (
+                    <ol className="list-decimal pl-4.5 space-y-1">
+                      {JSON.parse(selectedBom.notes).map((inst: any, idx: number) => (
+                        <li key={idx} className="font-medium text-slate-600">{inst.instruction}</li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <span className="font-medium text-slate-600">{selectedBom.notes}</span>
+                  )}
                 </div>
               )}
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
               <button
+                type="button"
+                onClick={() => {
+                  setPrintSelectedBom(selectedBom);
+                  setIsPrintModalOpen(true);
+                  setIsViewModalOpen(false);
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/10 cursor-pointer"
+              >
+                <Printer className="w-4 h-4" /> พิมพ์ใบชั่งและ BPR
+              </button>
+              <button
+                type="button"
                 onClick={() => setIsViewModalOpen(false)}
                 className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-100 transition-all cursor-pointer shadow-sm"
               >
@@ -446,6 +548,7 @@ export default function Boms({
                 {editingBom ? "แก้ไขสูตรการผลิต (BOM)" : "สร้างสูตรการผลิต (BOM) ใหม่"}
               </h3>
               <button 
+                type="button"
                 onClick={() => setIsEditModalOpen(false)} 
                 className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-lg transition-colors cursor-pointer"
               >
@@ -455,97 +558,136 @@ export default function Boms({
 
             <form onSubmit={handleSaveSubmit} className="flex-1 overflow-y-auto flex flex-col">
               <div className="p-6 md:p-8 space-y-6 flex-1">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {/* Section 1: Product Selection & Meta */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                  {/* รหัสผลิตภัณฑ์ */}
                   <div className="relative md:col-span-1">
-                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wide mb-1.5">เลือกสินค้าผลิตภัณฑ์ <span className="text-red-500">*</span></label>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">รหัสผลิตภัณฑ์ <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <input
                         type="text"
-                        value={productSearch}
+                        value={productCode}
                         onChange={(e) => {
-                          setProductSearch(e.target.value);
-                          setIsProductDropdownOpen(true);
-                          const matched = products.find(p => `${p.code} - ${p.name}`.toLowerCase() === e.target.value.toLowerCase());
+                          const val = e.target.value;
+                          setProductCode(val);
+                          setIsProductCodeDropdownOpen(true);
+                          const matched = products.find(p => p.code.toLowerCase() === val.trim().toLowerCase());
                           if (matched) {
                             setProductId(matched.id);
+                            setProductName(matched.name);
                           } else {
                             setProductId("");
                           }
                         }}
-                        onFocus={() => setIsProductDropdownOpen(true)}
+                        onFocus={() => setIsProductCodeDropdownOpen(true)}
                         onBlur={() => {
                           setTimeout(() => {
-                            setIsProductDropdownOpen(false);
+                            setIsProductCodeDropdownOpen(false);
                           }, 250);
                         }}
-                        placeholder="พิมพ์เพื่อค้นหา หรือเลือกจากรายการ..."
+                        placeholder="พิมพ์เพื่อค้นหา..."
                         required
-                        className="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all shadow-sm text-slate-800 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all shadow-sm text-slate-800"
                       />
-                      <div className="absolute right-3 top-3 text-slate-400 pointer-events-none">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
                     </div>
-
-                    {isProductDropdownOpen && (
-                      <div className="absolute z-[60] left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl divide-y divide-slate-100">
+                    {isProductCodeDropdownOpen && (
+                      <div className="absolute z-[60] left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl divide-y divide-slate-100">
                         {products
-                          .filter(p => {
-                            const pCode = (p.code || "").toLowerCase();
-                            const pName = (p.name || "").toLowerCase();
-                            const q = productSearch.toLowerCase();
-                            return pCode.includes(q) || pName.includes(q);
-                          })
+                          .filter(p => (p.code || "").toLowerCase().includes(productCode.toLowerCase()))
                           .map(p => (
                             <button
                               key={p.id}
                               type="button"
                               onClick={() => {
                                 setProductId(p.id);
-                                setProductSearch(`${p.code} - ${p.name}`);
-                                setIsProductDropdownOpen(false);
+                                setProductCode(p.code);
+                                setProductName(p.name);
+                                setIsProductCodeDropdownOpen(false);
                               }}
-                              className="w-full text-left px-4 py-3 text-xs md:text-sm hover:bg-blue-50 text-slate-700 font-sans transition-colors flex items-center justify-between"
+                              className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 text-slate-700 font-sans transition-colors flex flex-col"
                             >
-                              <span className="font-semibold text-slate-800">{p.code} - {p.name}</span>
-                              <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-1 rounded font-mono uppercase font-bold">{p.type}</span>
+                              <span className="font-bold text-blue-600 font-mono">{p.code}</span>
+                              <span className="text-[10px] text-slate-400 truncate">{p.name}</span>
                             </button>
-                          ))
-                        }
-                        {products.filter(p => {
-                          const pCode = (p.code || "").toLowerCase();
-                          const pName = (p.name || "").toLowerCase();
-                          const q = productSearch.toLowerCase();
-                          return pCode.includes(q) || pName.includes(q);
-                        }).length === 0 && (
-                          <div className="px-4 py-3 text-xs md:text-sm text-slate-400 italic">
-                            ไม่พบสินค้าผลิตภัณฑ์ที่ตรงกัน
-                          </div>
-                        )}
+                          ))}
                       </div>
                     )}
                   </div>
 
+                  {/* ชื่อผลิตภัณฑ์ */}
+                  <div className="relative md:col-span-1">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">ชื่อผลิตภัณฑ์ <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={productName}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setProductName(val);
+                          setIsProductNameDropdownOpen(true);
+                          const matched = products.find(p => p.name.toLowerCase() === val.trim().toLowerCase());
+                          if (matched) {
+                            setProductId(matched.id);
+                            setProductCode(matched.code);
+                          } else {
+                            setProductId("");
+                          }
+                        }}
+                        onFocus={() => setIsProductNameDropdownOpen(true)}
+                        onBlur={() => {
+                          setTimeout(() => {
+                            setIsProductNameDropdownOpen(false);
+                          }, 250);
+                        }}
+                        placeholder="พิมพ์เพื่อค้นหา..."
+                        required
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all shadow-sm text-slate-800"
+                      />
+                    </div>
+                    {isProductNameDropdownOpen && (
+                      <div className="absolute z-[60] left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl divide-y divide-slate-100">
+                        {products
+                          .filter(p => (p.name || "").toLowerCase().includes(productName.toLowerCase()))
+                          .map(p => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => {
+                                setProductId(p.id);
+                                setProductCode(p.code);
+                                setProductName(p.name);
+                                setIsProductNameDropdownOpen(false);
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 text-slate-700 font-sans transition-colors flex flex-col"
+                            >
+                              <span className="font-semibold text-slate-800">{p.name}</span>
+                              <span className="text-[10px] text-slate-400 font-mono">{p.code}</span>
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* เวอร์ชัน */}
                   <div>
-                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wide mb-1.5">เวอร์ชันสูตร</label>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">เวอร์ชันสูตร</label>
                     <input
                       type="text"
                       value={version}
                       onChange={(e) => setVersion(e.target.value)}
-                      placeholder="เช่น v1.0, v2.1"
+                      placeholder="เช่น v1.0"
                       required
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all shadow-sm text-slate-800"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all shadow-sm text-slate-800"
                     />
                   </div>
 
+                  {/* สถานะ */}
                   <div>
-                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wide mb-1.5">สถานะการใช้งาน</label>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">สถานะการใช้งาน</label>
                     <select
                       value={status}
                       onChange={(e) => setStatus(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all shadow-sm text-slate-800 cursor-pointer"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs md:text-sm font-bold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all shadow-sm text-slate-800 cursor-pointer"
                     >
                       <option value="active">เปิดใช้งาน (Active)</option>
                       <option value="test">สูตรทดลอง (Test)</option>
@@ -554,22 +696,11 @@ export default function Boms({
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase tracking-wide mb-1.5">หมายเหตุ / วิธีการผสมสูตรสำเร็จ</label>
-                  <input
-                    type="text"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="ระบุคำอธิบายสั้นๆ สำหรับการผสม หรือข้อควรระวังพิเศษ"
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all shadow-sm text-slate-800"
-                  />
-                </div>
-
-                {/* Ingredients formulation lines */}
+                {/* Section 2: Ingredient List with Split Autocomplete Columns */}
                 <div className="space-y-3 border-t border-slate-150 pt-5">
                   <div className="flex items-center justify-between pb-1.5">
                     <h4 className="text-xs md:text-sm lg:text-base font-extrabold text-slate-800 flex items-center gap-2">
-                      <Database className="w-5 h-5 text-blue-500" /> สัดส่วนส่วนผสมวัตถุดิบเคมีหลัก <span className="text-xs font-normal text-slate-400">(ต่อหนึ่งถังผลิตมาตรฐาน)</span>
+                      <Database className="w-5 h-5 text-blue-500" /> รายการวัตถุดิบและส่วนผสมสารเคมี <span className="text-xs font-normal text-slate-400">(ต่อหนึ่งถังผลิตมาตรฐาน)</span>
                     </h4>
                     <button
                       type="button"
@@ -581,9 +712,10 @@ export default function Boms({
                   </div>
 
                   <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
-                    {/* Header Columns for Tablet and Up */}
+                    {/* Header Columns for Desktop */}
                     {materials.length > 0 && (
-                      <div className="hidden md:flex gap-3 items-center px-3 pb-1 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      <div className="hidden md:flex gap-4 items-center px-3 pb-1 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        <div className="w-1/3">รหัสวัตถุดิบเคมี</div>
                         <div className="flex-1">ชื่อวัตถุดิบเคมีภัณฑ์ / สารเคมี</div>
                         <div className="w-32">ปริมาณสัดส่วน</div>
                         <div className="w-32">หน่วยวัด</div>
@@ -592,95 +724,103 @@ export default function Boms({
                     )}
 
                     {materials.map((m, idx) => (
-                      <div key={idx} className="flex flex-col md:flex-row gap-3 items-stretch md:items-center bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm">
-                        {/* Material dropdown selection with Search & Typeable capability */}
-                        <div className="flex-1 relative">
-                          <label className="block md:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">วัตถุดิบเคมี</label>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              value={m.material_name}
-                              onChange={(e) => {
-                                handleMaterialChange(idx, "material_name", e.target.value);
-                                setOpenDropdownIdx(idx);
-                              }}
-                              onFocus={() => setOpenDropdownIdx(idx)}
-                              onBlur={() => {
-                                setTimeout(() => {
-                                  setOpenDropdownIdx(null);
-                                }, 250);
-                              }}
-                              placeholder="พิมพ์ค้นหาหรือป้อนสารเคมี..."
-                              className="w-full pl-3 pr-8 py-2.5 bg-white border border-slate-300 rounded-xl text-xs md:text-sm font-semibold text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-                            />
-                            <button
-                              type="button"
-                              tabIndex={-1}
-                              onClick={() => {
-                                setOpenDropdownIdx(openDropdownIdx === idx ? null : idx);
-                              }}
-                              className="absolute right-2 top-2.5 p-0.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
-                            >
-                              <ChevronDown className="w-4 h-4" />
-                            </button>
-                          </div>
+                      <div key={idx} className="flex flex-col md:flex-row gap-3 items-stretch md:items-center bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm relative">
+                        
+                        {/* 1. รหัสวัตถุดิบ (Autocomplete) */}
+                        <div className="w-full md:w-1/3 relative">
+                          <label className="block md:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">รหัสวัตถุดิบ</label>
+                          <input
+                            type="text"
+                            value={m.material_code}
+                            onChange={(e) => {
+                              handleMaterialChange(idx, "material_code", e.target.value);
+                              setOpenCodeDropdownIdx(idx);
+                              setOpenNameDropdownIdx(null);
+                            }}
+                            onFocus={() => {
+                              setOpenCodeDropdownIdx(idx);
+                              setOpenNameDropdownIdx(null);
+                            }}
+                            onBlur={() => {
+                              setTimeout(() => {
+                                setOpenCodeDropdownIdx(null);
+                              }, 250);
+                            }}
+                            placeholder="ค้นหารหัสสาร..."
+                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+                          />
 
-                          {openDropdownIdx === idx && (
-                            <div className="absolute z-[70] left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl divide-y divide-slate-100">
+                          {openCodeDropdownIdx === idx && (
+                            <div className="absolute z-[70] left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl divide-y divide-slate-100">
                               {rawMaterials
-                                .filter(rm => {
-                                  const rmName = (rm.name || "").toLowerCase();
-                                  const rmCode = (rm.code || "").toLowerCase();
-                                  const q = (m.material_name || "").toLowerCase();
-                                  return rmName.includes(q) || rmCode.includes(q);
-                                })
+                                .filter(rm => (rm.code || "").toLowerCase().includes((m.material_code || "").toLowerCase()))
+                                .map(rm => (
+                                  <button
+                                    key={rm.id}
+                                    type="button"
+                                    onClick={() => {
+                                      handleMaterialChange(idx, "material_code", rm.code);
+                                      setOpenCodeDropdownIdx(null);
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 text-slate-700 font-sans font-medium transition-colors"
+                                  >
+                                    <div className="font-bold text-blue-600 font-mono">{rm.code}</div>
+                                    <div className="text-[10px] text-slate-500 truncate">{rm.name}</div>
+                                  </button>
+                                ))
+                              }
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 2. ชื่อวัตถุดิบ (Autocomplete) */}
+                        <div className="flex-1 relative">
+                          <label className="block md:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ชื่อวัตถุดิบ</label>
+                          <input
+                            type="text"
+                            value={m.material_name}
+                            onChange={(e) => {
+                              handleMaterialChange(idx, "material_name", e.target.value);
+                              setOpenNameDropdownIdx(idx);
+                              setOpenCodeDropdownIdx(null);
+                            }}
+                            onFocus={() => {
+                              setOpenNameDropdownIdx(idx);
+                              setOpenCodeDropdownIdx(null);
+                            }}
+                            onBlur={() => {
+                              setTimeout(() => {
+                                setOpenNameDropdownIdx(null);
+                              }, 250);
+                            }}
+                            placeholder="พิมพ์ค้นหาชื่อสารเคมี..."
+                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs md:text-sm font-semibold text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+                          />
+
+                          {openNameDropdownIdx === idx && (
+                            <div className="absolute z-[70] left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl divide-y divide-slate-100">
+                              {rawMaterials
+                                .filter(rm => (rm.name || "").toLowerCase().includes((m.material_name || "").toLowerCase()))
                                 .map(rm => (
                                   <button
                                     key={rm.id}
                                     type="button"
                                     onClick={() => {
                                       handleMaterialChange(idx, "material_name", rm.name);
-                                      setOpenDropdownIdx(null);
+                                      setOpenNameDropdownIdx(null);
                                     }}
-                                    className="w-full text-left px-3 py-2.5 text-xs md:text-sm hover:bg-blue-50 text-slate-700 font-sans transition-colors flex flex-col gap-0.5"
+                                    className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 text-slate-700 font-sans font-medium transition-colors"
                                   >
-                                    <div className="flex items-center justify-between">
-                                      <span className="font-semibold text-slate-800">{rm.code} - {rm.name}</span>
-                                      <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono uppercase font-bold">{rm.unit}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between text-[10px] text-slate-500">
-                                      <span className={rm.stock_qty <= rm.min_stock ? "text-red-500 font-medium" : "text-emerald-600 font-medium"}>
-                                        📦 คลังคงเหลือ: {rm.stock_qty.toLocaleString()} {rm.unit}
-                                      </span>
-                                      {rm.min_stock > 0 && (
-                                        <span className="text-slate-400 font-mono text-[9px]">
-                                          (ขั้นต่ำ: {rm.min_stock})
-                                        </span>
-                                      )}
-                                    </div>
+                                    <div className="font-semibold text-slate-800">{rm.name}</div>
+                                    <div className="text-[10px] text-slate-400 font-mono">{rm.code}</div>
                                   </button>
                                 ))
                               }
-                              {rawMaterials.filter(rm => {
-                                const rmName = (rm.name || "").toLowerCase();
-                                const rmCode = (rm.code || "").toLowerCase();
-                                const q = (m.material_name || "").toLowerCase();
-                                return rmName.includes(q) || rmCode.includes(q);
-                              }).length === 0 && (
-                                <div className="px-3 py-2.5 text-xs md:text-sm text-slate-400 italic">
-                                  ไม่พบวัตถุดิบเคมีที่ตรงกัน
-                                </div>
-                              )}
-                              {m.material_name.trim() !== "" && !rawMaterials.some(rm => rm.name.toLowerCase() === m.material_name.toLowerCase()) && (
-                                <div className="p-2.5 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-500 italic">
-                                  ✍️ ใช้ชื่อที่พิมพ์: "{m.material_name}" (เพิ่มข้อมูลสารเคมีนอกระบบ)
-                                </div>
-                              )}
                             </div>
                           )}
                         </div>
 
-                        {/* Quantity */}
+                        {/* 3. ปริมาณ */}
                         <div className="w-full md:w-32">
                           <label className="block md:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ปริมาณ</label>
                           <input
@@ -689,17 +829,18 @@ export default function Boms({
                             value={m.quantity || ""}
                             onChange={(e) => handleMaterialChange(idx, "quantity", parseFloat(e.target.value) || 0)}
                             placeholder="จำนวน"
-                            className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs md:text-sm text-right font-bold font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-800"
+                            required
+                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs md:text-sm text-right font-bold font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-800"
                           />
                         </div>
 
-                        {/* Unit selection */}
+                        {/* 4. หน่วยวัด */}
                         <div className="w-full md:w-32">
                           <label className="block md:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">หน่วยวัด</label>
                           <select
                             value={m.unit}
                             onChange={(e) => handleMaterialChange(idx, "unit", e.target.value)}
-                            className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-800 cursor-pointer"
+                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-800 cursor-pointer"
                           >
                             {standardUnits.map((un, unIdx) => (
                               <option key={unIdx} value={un}>{un}</option>
@@ -707,7 +848,7 @@ export default function Boms({
                           </select>
                         </div>
 
-                        {/* Delete row */}
+                        {/* ลบแถว */}
                         <div className="flex items-end justify-end md:items-center">
                           <button
                             type="button"
@@ -715,15 +856,57 @@ export default function Boms({
                             className="p-2 text-red-500 hover:bg-red-50 hover:text-red-700 rounded-xl transition-all cursor-pointer border border-transparent hover:border-red-100"
                             title="ลบแถววัตถุดิบ"
                           >
-                            <X className="w-5 h-5" />
+                            <X className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
+
+                {/* Section 3: Step-by-Step Manufacturing Instructions (วิธีการผลิต) */}
+                <div className="space-y-3 border-t border-slate-150 pt-5">
+                  <div className="flex items-center justify-between pb-1.5">
+                    <h4 className="text-xs md:text-sm lg:text-base font-extrabold text-slate-800 flex items-center gap-2">
+                      <ClipboardList className="w-5 h-5 text-indigo-500" /> ขั้นตอนและวิธีการผสมผลิตผลิตภัณฑ์สำเร็จรูป
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={handleAddInstructionRow}
+                      className="text-xs md:text-sm text-indigo-600 font-extrabold hover:text-indigo-800 hover:underline flex items-center gap-1 cursor-pointer bg-indigo-50 px-3 py-1.5 rounded-lg transition-all border border-indigo-100 shadow-sm"
+                    >
+                      + เพิ่มขั้นตอนผลิต
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {instructions.map((inst, idx) => (
+                      <div key={idx} className="flex gap-3 items-center bg-indigo-50/20 p-3 rounded-xl border border-indigo-100/50 hover:border-indigo-200 transition-all">
+                        <span className="w-16 text-xs font-bold text-indigo-600 font-mono text-center bg-indigo-50 px-2.5 py-1 rounded-lg">
+                          ขั้นตอน {idx + 1}
+                        </span>
+                        <input
+                          type="text"
+                          value={inst.instruction}
+                          onChange={(e) => handleInstructionChange(idx, e.target.value)}
+                          placeholder="ระบุรายละเอียดขั้นตอนการผสม อุณหภูมิ เวลา หรือข้อระวัง..."
+                          required
+                          className="flex-1 px-4 py-2 bg-white border border-slate-300 rounded-xl text-xs md:text-sm font-semibold text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveInstructionRow(idx)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
+              {/* Modal Actions */}
               <div className="p-5 bg-slate-50 border-t border-slate-150 flex justify-end gap-3 flex-shrink-0">
                 <button
                   type="button"
@@ -742,6 +925,16 @@ export default function Boms({
             </form>
           </div>
         </div>
+      )}
+
+      {/* BomPrint integration popup */}
+      {isPrintModalOpen && printSelectedBom && (
+        <BomPrint
+          bom={printSelectedBom}
+          rawMaterials={rawMaterials}
+          customers={customers}
+          onClose={() => setIsPrintModalOpen(false)}
+        />
       )}
     </div>
   );

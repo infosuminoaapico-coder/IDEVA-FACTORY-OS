@@ -112,38 +112,38 @@ export default function Customers({
       </div>
 
       {/* Customers Data Table */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-slate-250 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-600">
+          <table className="w-full text-left text-xs text-slate-600 border-collapse border border-slate-200">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 uppercase tracking-wider">
-                <th className="p-3.5">วันที่ลงข้อมูล</th>
-                <th className="p-3.5">รหัสลูกค้า</th>
-                <th className="p-3.5">ชื่อลูกค้า</th>
-                <th className="p-3.5">ชื่อแบรนด์</th>
-                <th className="p-3.5">ที่อยู่จัดส่ง</th>
-                <th className="p-3.5">สถานะ</th>
-                <th className="p-3.5 text-right">จัดการ</th>
+              <tr className="bg-slate-100 text-[11px] text-slate-700 tracking-wider">
+                <th className="p-2 border border-slate-200 font-normal">วันที่ลงข้อมูล</th>
+                <th className="p-2 border border-slate-200 font-normal">รหัสลูกค้า</th>
+                <th className="p-2 border border-slate-200 font-normal">ชื่อลูกค้า</th>
+                <th className="p-2 border border-slate-200 font-normal">ชื่อแบรนด์</th>
+                <th className="p-2 border border-slate-200 font-normal">ที่อยู่จัดส่ง</th>
+                <th className="p-2 border border-slate-200 font-normal">สถานะ</th>
+                <th className="p-2 border border-slate-200 font-normal text-right">จัดการ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody>
               {filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="p-3.5 text-slate-400 font-sans">
+                <tr key={c.id} className="odd:bg-white even:bg-[#f2f6fc] hover:bg-blue-50/55 transition-colors">
+                  <td className="p-2 border border-slate-200 text-slate-500 font-sans font-normal">
                     {c.created_at ? c.created_at.split(/[ T]/)[0] : "-"}
                   </td>
-                  <td className="p-3.5 font-bold font-mono text-blue-600">{c.code}</td>
-                  <td className="p-3.5">
-                    <div className="font-semibold text-slate-800">{c.name}</div>
+                  <td className="p-2 border border-slate-200 font-normal font-mono text-blue-600">{c.code}</td>
+                  <td className="p-2 border border-slate-200">
+                    <div className="font-normal text-slate-800">{c.name}</div>
                   </td>
-                  <td className="p-3.5 text-slate-700 font-medium">
+                  <td className="p-2 border border-slate-200 text-slate-600 font-normal">
                     {c.contact || "-"}
                   </td>
-                  <td className="p-3.5 text-slate-500 max-w-[200px] truncate font-sans" title={c.address}>
+                  <td className="p-2 border border-slate-200 text-slate-500 max-w-[200px] truncate font-sans font-normal" title={c.address}>
                     {c.address || "-"}
                   </td>
-                  <td className="p-3.5">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                  <td className="p-2 border border-slate-200">
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-normal ${
                       c.status === "active" || !c.status
                         ? "bg-emerald-50 border border-emerald-100 text-emerald-700"
                         : "bg-slate-50 border border-slate-100 text-slate-600"
@@ -154,28 +154,28 @@ export default function Customers({
                       {c.status === "active" || !c.status ? "ปกติ" : "ระงับ"}
                     </span>
                   </td>
-                  <td className="p-3.5">
+                  <td className="p-2 border border-slate-200">
                     <div className="flex items-center justify-end gap-1.5">
                       <button
                         onClick={() => openHistory(c)}
                         title="ดูประวัติผลิตของลูกค้า"
-                        className="p-1.5 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 rounded-lg transition-all"
+                        className="p-1 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 rounded-lg transition-all"
                       >
-                        <History className="w-4 h-4" />
+                        <History className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => openFormModal(c)}
                         title="แก้ไขลูกค้า"
-                        className="p-1.5 text-amber-600 hover:bg-amber-50 hover:text-amber-800 rounded-lg transition-all"
+                        className="p-1 text-amber-600 hover:bg-amber-50 hover:text-amber-800 rounded-lg transition-all"
                       >
-                        <Edit2 className="w-4 h-4" />
+                        <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleDelete(c.id)}
                         title="ลบ"
-                        className="p-1.5 text-red-600 hover:bg-red-50 hover:text-red-800 rounded-lg transition-all"
+                        className="p-1 text-red-600 hover:bg-red-50 hover:text-red-800 rounded-lg transition-all"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </td>
@@ -183,7 +183,7 @@ export default function Customers({
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400">
+                  <td colSpan={7} className="p-8 text-center text-slate-400 border border-slate-200">
                     ไม่พบข้อมูลลูกค้าที่ค้นหา
                   </td>
                 </tr>
