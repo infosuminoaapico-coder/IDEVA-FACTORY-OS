@@ -12,7 +12,8 @@ import {
   Warehouse, 
   LineChart, 
   Settings,
-  Menu
+  Menu,
+  BookOpen
 } from "lucide-react";
 
 interface SidebarProps {
@@ -43,6 +44,9 @@ export default function Sidebar({ activePage, setActivePage, isOpen, setIsOpen }
     ]},
     { section: "รายงาน", items: [
       { id: "report", label: "รายงานสรุป", icon: <LineChart className="w-4 h-4" /> }
+    ]},
+    { section: "คู่มือและช่วยเหลือ", items: [
+      { id: "manual", label: "คู่มือการใช้งานแบบละเอียด", icon: <BookOpen className="w-4 h-4" /> }
     ]}
   ];
 

@@ -9,6 +9,38 @@ export const supabase = createClient(cleanUrl, supabaseKey);
 
 // Local Fallback Mock Database in case Supabase tables are empty or unreachable
 export const fallbackDB: Record<string, any[]> = {
+  suppliers: [
+    {
+      id: 1,
+      code: "SUP-001",
+      name: "บริษัท โกลบอลเคมีคอล ซัพพลาย จำกัด",
+      contact: "คุณสมพงษ์ สารเคมี",
+      phone: "02-123-4567",
+      email: "sales@globalchem.co.th",
+      address: "88/12 ถนนบางนา-ตราด กม.10 บางพลี สมุทรปราการ",
+      status: "active"
+    },
+    {
+      id: 2,
+      code: "SUP-002",
+      name: "บริษัท ไทยอินกรีเดียนท์ จำกัด",
+      contact: "คุณวรรณา ซัพพลาย",
+      phone: "02-987-6543",
+      email: "info@thaiingredients.com",
+      address: "101/5 ซอยสุขุมวิท 71 พระโขนง กรุงเทพฯ",
+      status: "active"
+    },
+    {
+      id: 3,
+      code: "SUP-003",
+      name: "บริษัท นิปปอน เคมิเคิล (ประเทศไทย) จำกัด",
+      contact: "Mr. Kenji Sato",
+      phone: "02-555-8899",
+      email: "order@nipponchem.co.th",
+      address: "45/8 นิคมอุตสาหกรรมอมตะซิตี้ ชลบุรี",
+      status: "active"
+    }
+  ],
   customers: [
     {
       id: 1,
@@ -53,11 +85,11 @@ export const fallbackDB: Record<string, any[]> = {
     { id: 3, code: "P-003", name: "ผงซักล้างอุตสาหกรรมสูตรเข้มข้น C", type: "Powder", version: "v1.0", status: "active" }
   ],
   raw_materials: [
-    { id: 1, code: "RM-001", name: "Ethanol 96%", unit: "ลิตร", stock_qty: 120, min_stock: 50, status: "active" },
-    { id: 2, code: "RM-002", name: "Glycerin USP", unit: "ลิตร", stock_qty: 45, min_stock: 30, status: "active" },
-    { id: 3, code: "RM-003", name: "Sodium Hydroxide (NaOH)", unit: "กก.", stock_qty: 15, min_stock: 20, status: "active" },
-    { id: 4, code: "RM-004", name: "Hydrogen Peroxide 35%", unit: "ลิตร", stock_qty: 85, min_stock: 40, status: "active" },
-    { id: 5, code: "RM-005", name: "Citric Acid", unit: "กก.", stock_qty: 32, min_stock: 25, status: "active" }
+    { id: 1, code: "RM-001", name: "Ethanol 96%", unit: "L.", stock_qty: 120, min_stock: 50, unit_price: 65, supplier_id: 1, supplier_name: "บริษัท โกลบอลเคมีคอล ซัพพลาย จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&auto=format&fit=crop" },
+    { id: 2, code: "RM-002", name: "Glycerin USP", unit: "L.", stock_qty: 45, min_stock: 30, unit_price: 90, supplier_id: 1, supplier_name: "บริษัท โกลบอลเคมีคอล ซัพพลาย จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1608248597280-92fb13e64f77?w=300&auto=format&fit=crop" },
+    { id: 3, code: "RM-003", name: "Sodium Hydroxide (NaOH)", unit: "KG.", stock_qty: 15, min_stock: 20, unit_price: 55, supplier_id: 2, supplier_name: "บริษัท ไทยอินกรีเดียนท์ จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=300&auto=format&fit=crop" },
+    { id: 4, code: "RM-004", name: "Hydrogen Peroxide 35%", unit: "L.", stock_qty: 85, min_stock: 40, unit_price: 110, supplier_id: 3, supplier_name: "บริษัท นิปปอน เคมิเคิล (ประเทศไทย) จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1585435557343-3b092031a831?w=300&auto=format&fit=crop" },
+    { id: 5, code: "RM-005", name: "Citric Acid Anhydrous", unit: "KG.", stock_qty: 32, min_stock: 25, unit_price: 70, supplier_id: 2, supplier_name: "บริษัท ไทยอินกรีเดียนท์ จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1584017911766-d451b3d0e843?w=300&auto=format&fit=crop" }
   ],
   bom_recipes: [
     {
@@ -266,6 +298,11 @@ const saveMemory = () => {
 
 export async function clientGetList(entity: string): Promise<any[]> {
   const table = entity;
+  const hasFailedBefore = localStorage.getItem(`supabase_failed_${entity}`) === "true";
+  if (hasFailedBefore) {
+    console.warn(`Supabase has previously failed for ${entity}. Using local memory DB instead.`);
+    return memoryDB[entity] || [];
+  }
   try {
     const { data, error } = await supabase.from(table).select("*").order("id", { ascending: false });
     if (error) throw error;
@@ -333,6 +370,7 @@ export async function clientGetList(entity: string): Promise<any[]> {
     return finalData;
   } catch (err) {
     console.warn(`Supabase client query failed for ${entity}, falling back to local memory:`, err);
+    localStorage.setItem(`supabase_failed_${entity}`, "true");
     return memoryDB[entity] || [];
   }
 }
@@ -449,6 +487,7 @@ export async function clientSave(entity: string, id: number, data: any): Promise
     return savedId;
   } catch (err) {
     console.warn(`Supabase client save failed for ${entity}, performing local state save instead:`, err);
+    localStorage.setItem(`supabase_failed_${entity}`, "true");
     
     // Fallback to local memory DB
     if (entity === "bom_recipes" && materialsToSave !== null) {
@@ -498,6 +537,7 @@ export async function clientDelete(entity: string, id: number): Promise<boolean>
     return true;
   } catch (err) {
     console.warn(`Supabase client delete failed for ${entity}, deleting from local memory instead:`, err);
+    localStorage.setItem(`supabase_failed_${entity}`, "true");
     if ((memoryDB as any)[entity]) {
       (memoryDB as any)[entity] = (memoryDB as any)[entity].filter((item: any) => item.id !== id);
       saveMemory();

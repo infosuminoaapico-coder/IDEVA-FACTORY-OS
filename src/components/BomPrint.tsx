@@ -65,10 +65,12 @@ export default function BomPrint({ bom, customers, rawMaterials, onClose }: BomP
     const matchedRm = rawMaterials.find(rm => rm.name.toLowerCase() === m.material_name.toLowerCase());
     const materialCode = matchedRm ? matchedRm.code : "RM-N/A";
 
-    // Set logical parts grouping (A, B, C) based on index or custom
-    let part = "A";
-    if (idx >= 3) part = "B";
-    if (idx >= 6) part = "C";
+    // Set logical parts grouping (A, B, C) based on material part or index
+    let part = m.part || "A";
+    if (!m.part) {
+      if (idx >= 3) part = "B";
+      if (idx >= 6) part = "C";
+    }
 
     return {
       no: idx + 1,

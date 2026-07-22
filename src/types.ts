@@ -1,3 +1,15 @@
+export interface Supplier {
+  id: number;
+  code: string;
+  name: string;
+  contact?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  status: string;
+  created_at?: string;
+}
+
 export interface Customer {
   id: number;
   code: string;
@@ -18,6 +30,7 @@ export interface Product {
   type: string;
   version: string;
   status: string;
+  image_url?: string;
 }
 
 export interface RawMaterial {
@@ -28,18 +41,26 @@ export interface RawMaterial {
   stock_qty: number;
   min_stock: number;
   status: string;
+  unit_price?: number;
+  supplier_id?: number;
+  supplier_name?: string;
+  image_url?: string;
 }
 
 export interface BomMaterial {
+  part?: string;
+  material_code?: string;
   material_name: string;
   quantity: number;
   unit: string;
   notes?: string | null;
+  unit_price?: number;
 }
 
 export interface BomRecipe {
   id: number;
   product_id: number;
+  part_no?: string;
   version: string;
   status: string;
   notes?: string;
@@ -49,6 +70,7 @@ export interface BomRecipe {
   product_type?: string;
   production_count?: number;
   production_quantity?: number;
+  estimated_unit_cost?: number;
 }
 
 export interface ProductionOrder {
@@ -104,10 +126,14 @@ export interface Grn {
   id: number;
   code: string;
   purchase_order_id: number;
+  po_number?: string;
   raw_material_id: number;
+  supplier_name?: string;
   lot_number: string;
   expiry_date: string;
   received_qty: number;
+  unit_price?: number;
+  unit?: string;
   receiver: string;
   receive_date: string;
   status: string;
@@ -136,6 +162,9 @@ export interface InventoryPack {
   qty: number;
   unit: string;
   status: string;
+  supplier_name?: string;
+  unit_price?: number;
+  image_url?: string;
 }
 
 export interface PurchasePack {

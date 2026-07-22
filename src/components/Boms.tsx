@@ -53,6 +53,7 @@ export default function Boms({
   const [productId, setProductId] = useState<number | "">("");
   const [productCode, setProductCode] = useState("");
   const [productName, setProductName] = useState("");
+  const [partNo, setPartNo] = useState("");
   const [isProductCodeDropdownOpen, setIsProductCodeDropdownOpen] = useState(false);
   const [isProductNameDropdownOpen, setIsProductNameDropdownOpen] = useState(false);
 
@@ -68,20 +69,22 @@ export default function Boms({
     { instruction: "" }
   ]);
 
-  // materials array with both code and name
+  // materials array with part, code, name, quantity, unit
   const [materials, setMaterials] = useState<Array<{ 
+    part?: string;
     material_code: string; 
     material_name: string; 
-    quantity: number; 
+    quantity: number | string; 
     unit: string; 
     notes?: string 
   }>>([
-    { material_code: "", material_name: "", quantity: 0, unit: "ลิตร" }
+    { part: "A", material_code: "", material_name: "", quantity: "", unit: "KG." }
   ]);
 
   // Handle Dynamic rows inside formulation
   const handleAddMaterialRow = () => {
-    setMaterials([...materials, { material_code: "", material_name: "", quantity: 0, unit: "ลิตร" }]);
+    const nextPart = materials.length >= 6 ? "C" : materials.length >= 3 ? "B" : "A";
+    setMaterials([...materials, { part: nextPart, material_code: "", material_name: "", quantity: "", unit: "KG." }]);
   };
 
   const handleRemoveMaterialRow = (index: number) => {
@@ -99,13 +102,13 @@ export default function Boms({
       const matched = rawMaterials.find(r => r.code.toLowerCase() === value.trim().toLowerCase());
       if (matched) {
         updated[index].material_name = matched.name;
-        updated[index].unit = matched.unit;
+        updated[index].unit = matched.unit || "KG.";
       }
     } else if (field === "material_name") {
       const matched = rawMaterials.find(r => r.name.toLowerCase() === value.trim().toLowerCase());
       if (matched) {
         updated[index].material_code = matched.code;
-        updated[index].unit = matched.unit;
+        updated[index].unit = matched.unit || "KG.";
       }
     }
     setMaterials(updated);
@@ -128,8 +131,8 @@ export default function Boms({
     setInstructions(updated);
   };
 
-  // List of standard units
-  const standardUnits = ["ลิตร", "กก.", "แกลลอน", "ชิ้น", "ซีซี", "มล.", "กรัม", "ขวด", "ถุง", "ลัง"];
+  // List of standard units in English abbreviations
+  const standardUnits = ["KG.", "G.", "L.", "ML.", "PCS.", "BAG", "DRUM", "BOX", "CAN", "BOTTLE", "SET"];
 
   // Filter recipes based on search input
   const filtered = bomRecipes.filter(b => {
@@ -177,6 +180,7 @@ export default function Boms({
     if (bom) {
       setEditingBom(clone ? null : bom);
       setProductId(bom.product_id);
+      setPartNo(bom.part_no || "");
       
       const matchedProd = products.find(p => p.id === bom.product_id);
       setProductCode(matchedProd ? matchedProd.code : (bom.product_code || ""));
@@ -203,64 +207,105 @@ export default function Boms({
       setInstructions(parsedInstructions);
 
       // Map materials
-      setMaterials(bom.materials.map(m => {
+      setMaterials(bom.materials.map((m, idx) => {
         const matchedRm = rawMaterials.find(rm => rm.name.toLowerCase() === m.material_name.toLowerCase());
         return {
-          material_code: matchedRm ? matchedRm.code : "",
+          part: m.part || (idx >= 6 ? "C" : idx >= 3 ? "B" : "A"),
+          material_code: m.material_code || (matchedRm ? matchedRm.code : ""),
           material_name: m.material_name,
           quantity: m.quantity,
-          unit: m.unit,
+          unit: m.unit || "KG.",
           notes: m.notes || ""
         };
       }));
     } else {
       setEditingBom(null);
       setProductId("");
+      setPartNo("PART-001");
       setProductCode("");
       setProductName("");
       setVersion("v1.0");
       setStatus("active");
       setInstructions([{ instruction: "" }]);
-      setMaterials([{ material_code: "", material_name: "", quantity: 0, unit: "ลิตร" }]);
+      setMaterials([{ part: "A", material_code: "", material_name: "", quantity: "", unit: "KG." }]);
     }
     setIsEditModalOpen(true);
   };
 
   const handleSaveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productId) return;
 
-    // Filter out invalid items
-    const validMaterials = materials.filter(m => m.material_name.trim() && m.quantity > 0);
-    if (validMaterials.length === 0) {
-      alert("กรุณาเพิ่มวัตถุดิบและปริมาณของส่วนผสมอย่างน้อย 1 รายการ!");
+    // 1. Resolve product_id
+    let resolvedProductId = Number(productId);
+    if (!resolvedProductId || isNaN(resolvedProductId)) {
+      const matchedProd = products.find(
+        p => (productCode && p.code.toLowerCase() === productCode.trim().toLowerCase()) ||
+             (productName && p.name.toLowerCase() === productName.trim().toLowerCase())
+      );
+      if (matchedProd) {
+        resolvedProductId = matchedProd.id;
+      } else if (products.length > 0) {
+        resolvedProductId = products[0].id;
+      } else {
+        resolvedProductId = 1;
+      }
+    }
+
+    if (!productCode.trim() && !productName.trim()) {
+      alert("กรุณาระบุรหัสสินค้าหรือชื่อสินค้าที่ต้องการสร้างสูตร!");
       return;
     }
 
-    // Filter out empty instruction lines
+    // 2. Filter out invalid materials (must have name and quantity > 0)
+    const validMaterials = materials.filter(m => m.material_name.trim() && Number(m.quantity) > 0);
+    if (validMaterials.length === 0) {
+      alert("กรุณาระบุวัตถุดิบและใส่ปริมาณส่วนผสมอย่างน้อย 1 รายการ (พิมพ์จุดทศนิยม เช่น 0.01 ได้)!");
+      return;
+    }
+
+    // 3. Filter out empty instruction lines
     const validInstructions = instructions.filter(inst => inst.instruction.trim());
 
-    await onSaveBom({
-      id: editingBom ? editingBom.id : 0,
-      product_id: Number(productId),
-      version,
-      status,
-      notes: JSON.stringify(validInstructions),
-      materials: validMaterials.map(m => {
-        const matchedRm = rawMaterials.find(
-          rm => rm.name.toLowerCase() === m.material_name.toLowerCase() || 
-                (m.material_code && rm.code.toLowerCase() === m.material_code.toLowerCase())
-        );
-        return {
-          raw_material_id: matchedRm ? matchedRm.id : null,
-          material_name: m.material_name,
-          quantity: m.quantity,
-          unit: m.unit,
-          notes: m.notes || ""
-        };
-      })
+    // 4. Calculate estimated unit cost
+    let calculatedCost = 0;
+    const formattedMaterials = validMaterials.map((m, idx) => {
+      const matchedRm = rawMaterials.find(
+        rm => rm.name.toLowerCase() === m.material_name.trim().toLowerCase() || 
+              (m.material_code && rm.code.toLowerCase() === m.material_code.trim().toLowerCase())
+      );
+      const qtyNum = Number(m.quantity) || 0;
+      const unitPrice = matchedRm?.unit_price || 0;
+      calculatedCost += qtyNum * unitPrice;
+
+      return {
+        part: m.part || (idx >= 6 ? "C" : idx >= 3 ? "B" : "A"),
+        raw_material_id: matchedRm ? matchedRm.id : null,
+        material_code: m.material_code || (matchedRm ? matchedRm.code : ""),
+        material_name: m.material_name.trim(),
+        quantity: qtyNum,
+        unit: m.unit || "KG.",
+        unit_price: unitPrice,
+        notes: m.notes || ""
+      };
     });
-    setIsEditModalOpen(false);
+
+    try {
+      await onSaveBom({
+        id: editingBom ? editingBom.id : 0,
+        product_id: resolvedProductId,
+        product_code: productCode,
+        product_name: productName,
+        part_no: partNo || "PART-001",
+        version,
+        status,
+        notes: JSON.stringify(validInstructions),
+        estimated_unit_cost: calculatedCost,
+        materials: formattedMaterials
+      });
+      setIsEditModalOpen(false);
+    } catch (err: any) {
+      alert("เกิดข้อผิดพลาดในการบันทึกสูตร BOM: " + (err.message || err));
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -306,11 +351,13 @@ export default function Boms({
             <thead>
               <tr className="bg-slate-100 text-[11px] text-slate-700 tracking-wider">
                 <th className="p-2 border border-slate-200 font-normal text-center w-12">ลำดับ</th>
+                <th className="p-2 border border-slate-200 font-normal">Part No.</th>
                 <th className="p-2 border border-slate-200 font-normal">รหัสสินค้า</th>
                 <th className="p-2 border border-slate-200 font-normal">ชื่อสินค้าที่ผลิต</th>
-                <th className="p-2 border border-slate-200 font-normal text-center w-28">เวอร์ชันสูตร</th>
+                <th className="p-2 border border-slate-200 font-normal text-center w-24">เวอร์ชันสูตร</th>
+                <th className="p-2 border border-slate-200 font-normal text-right w-32">ต้นทุนประมาณการ/หน่วย</th>
                 <th className="p-2 border border-slate-200 font-normal text-right w-44">ผลิตไปแล้ว (Already Produced)</th>
-                <th className="p-2 border border-slate-200 font-normal text-center w-28">สถานะ</th>
+                <th className="p-2 border border-slate-200 font-normal text-center w-24">สถานะ</th>
                 <th className="p-2 border border-slate-200 font-normal text-center w-48">การจัดการ</th>
               </tr>
             </thead>
@@ -319,23 +366,28 @@ export default function Boms({
                 // Production stats
                 const stats = getProductProductionStats(b.product_id);
                 const hasProduced = stats.qty > 0;
+                const estCost = b.estimated_unit_cost || b.materials.reduce((sum, m) => {
+                  const rm = rawMaterials.find(r => r.name.toLowerCase() === m.material_name.toLowerCase());
+                  return sum + (Number(m.quantity) * (rm?.unit_price || 0));
+                }, 0);
                 
                 return (
                   <tr key={b.id} className="odd:bg-white even:bg-[#f2f6fc] hover:bg-blue-50/55 transition-colors">
                     <td className="p-2 border border-slate-200 text-center font-mono text-slate-500 font-normal">{index + 1}</td>
+                    <td className="p-2 border border-slate-200 font-bold font-mono text-blue-600">{b.part_no || "PART-001"}</td>
                     <td className="p-2 border border-slate-200 font-normal font-mono text-slate-800">{b.product_code || "-"}</td>
                     <td className="p-2 border border-slate-200">
                       <div>
-                        <span className="font-normal text-slate-800">{b.product_name || "-"}</span>
-                        {b.notes && (
-                          <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-xs">{b.notes}</p>
-                        )}
+                        <span className="font-semibold text-slate-800">{b.product_name || "-"}</span>
                       </div>
                     </td>
                     <td className="p-2 border border-slate-200 text-center font-normal font-mono text-slate-500">
                       <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md text-[11px]">
                         {b.version}
                       </span>
+                    </td>
+                    <td className="p-2 border border-slate-200 text-right font-bold font-mono text-emerald-700">
+                      ฿{estCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="p-2 border border-slate-200 text-right font-normal">
                       {hasProduced ? (
@@ -566,7 +618,19 @@ export default function Boms({
             <form onSubmit={handleSaveSubmit} className="flex-1 overflow-y-auto flex flex-col">
               <div className="p-6 md:p-8 space-y-6 flex-1">
                 {/* Section 1: Product Selection & Meta */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  {/* Part No. */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Part No. / รหัส Part</label>
+                    <input
+                      type="text"
+                      value={partNo}
+                      onChange={(e) => setPartNo(e.target.value)}
+                      placeholder="เช่น PART-A, P-01"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all shadow-sm text-slate-800"
+                    />
+                  </div>
+
                   {/* รหัสผลิตภัณฑ์ */}
                   <div className="relative md:col-span-1">
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">รหัสผลิตภัณฑ์ <span className="text-red-500">*</span></label>
@@ -721,11 +785,12 @@ export default function Boms({
                   <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                     {/* Header Columns for Desktop */}
                     {materials.length > 0 && (
-                      <div className="hidden md:flex gap-4 items-center px-3 pb-1 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        <div className="w-1/3">รหัสวัตถุดิบเคมี</div>
+                      <div className="hidden md:flex gap-3 items-center px-3 pb-1 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        <div className="w-20">Part</div>
+                        <div className="w-1/4">รหัสวัตถุดิบ</div>
                         <div className="flex-1">ชื่อวัตถุดิบเคมีภัณฑ์ / สารเคมี</div>
-                        <div className="w-32">ปริมาณสัดส่วน</div>
-                        <div className="w-32">หน่วยวัด</div>
+                        <div className="w-28 text-right">ปริมาณ (สัดส่วน)</div>
+                        <div className="w-24">หน่วยวัด</div>
                         <div className="w-8"></div>
                       </div>
                     )}
@@ -733,8 +798,20 @@ export default function Boms({
                     {materials.map((m, idx) => (
                       <div key={idx} className="flex flex-col md:flex-row gap-3 items-stretch md:items-center bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm relative">
                         
+                        {/* 0. Part */}
+                        <div className="w-full md:w-20">
+                          <label className="block md:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Part</label>
+                          <input
+                            type="text"
+                            value={m.part || "A"}
+                            onChange={(e) => handleMaterialChange(idx, "part", e.target.value)}
+                            placeholder="A / B"
+                            className="w-full px-2 py-2 bg-white border border-slate-300 rounded-xl text-xs md:text-sm text-center font-bold font-mono text-slate-800 focus:outline-none focus:border-blue-500 uppercase"
+                          />
+                        </div>
+
                         {/* 1. รหัสวัตถุดิบ (Autocomplete) */}
-                        <div className="w-full md:w-1/3 relative">
+                        <div className="w-full md:w-1/4 relative">
                           <label className="block md:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">รหัสวัตถุดิบ</label>
                           <input
                             type="text"
@@ -827,27 +904,28 @@ export default function Boms({
                           )}
                         </div>
 
-                        {/* 3. ปริมาณ */}
-                        <div className="w-full md:w-32">
+                        {/* 3. ปริมาณ (พิมพ์ 0.01 ได้) */}
+                        <div className="w-full md:w-28">
                           <label className="block md:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ปริมาณ</label>
                           <input
                             type="number"
-                            step="0.01"
-                            value={m.quantity || ""}
-                            onChange={(e) => handleMaterialChange(idx, "quantity", parseFloat(e.target.value) || 0)}
-                            placeholder="จำนวน"
+                            step="any"
+                            min="0"
+                            value={m.quantity === undefined || m.quantity === null ? "" : m.quantity}
+                            onChange={(e) => handleMaterialChange(idx, "quantity", e.target.value)}
+                            placeholder="0.01"
                             required
                             className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs md:text-sm text-right font-bold font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-800"
                           />
                         </div>
 
                         {/* 4. หน่วยวัด */}
-                        <div className="w-full md:w-32">
+                        <div className="w-full md:w-24">
                           <label className="block md:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">หน่วยวัด</label>
                           <select
                             value={m.unit}
                             onChange={(e) => handleMaterialChange(idx, "unit", e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-800 cursor-pointer"
+                            className="w-full px-2 py-2 bg-white border border-slate-300 rounded-xl text-xs md:text-sm font-bold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-slate-800 cursor-pointer"
                           >
                             {standardUnits.map((un, unIdx) => (
                               <option key={unIdx} value={un}>{un}</option>

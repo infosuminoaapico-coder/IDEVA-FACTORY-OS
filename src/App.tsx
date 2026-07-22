@@ -4,6 +4,7 @@ import Topbar from "./components/Topbar";
 import Dashboard from "./components/Dashboard";
 import Customers from "./components/Customers";
 import Boms from "./components/Boms";
+import UserManual from "./components/UserManual";
 import { clientGetList, clientSave, clientDelete } from "./lib/supabaseClient";
 import { 
   PrecheckPage, 
@@ -101,12 +102,7 @@ export default function App() {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [grns, setGrns] = useState<Grn[]>([]);
   const [prechecks, setPrechecks] = useState<Precheck[]>([]);
-  const [inventoryPacks, setInventoryPacks] = useState<InventoryPack[]>([
-    { id: 1, code: "PK-001", type: "ขวด", name: "ขวด HDPE ขนาด 1 ลิตร", qty: 2450, unit: "ชิ้น", status: "active" },
-    { id: 2, code: "PK-002", type: "ฝา", name: "ฝาสกรูพลาสติก สีขาว", qty: 4800, unit: "ชิ้น", status: "active" },
-    { id: 3, code: "PK-003", type: "ฉลาก", name: "ฉลากน้ำยาเคลือบแก้ว P-001", qty: 1500, unit: "ชิ้น", status: "active" },
-    { id: 4, code: "PK-004", type: "ฉลาก", name: "ฉลากสารฆ่าเชื้อ P-002", qty: 850, unit: "ชิ้น", status: "active" }
-  ]);
+  const [inventoryPacks, setInventoryPacks] = useState<InventoryPack[]>([]);
 
   // UI Toast state
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -133,6 +129,7 @@ export default function App() {
     const pOrders = await clientGetList("purchase_orders");
     const grnLogs = await clientGetList("grns");
     const checks = await clientGetList("prechecks");
+    const packs = await clientGetList("inventory_pack");
 
     // Enrich BOM Recipes with Product Info (code, name, type)
     const enrichedRecipes = recipes.map(r => {
@@ -154,6 +151,7 @@ export default function App() {
     setPurchaseOrders(pOrders);
     setGrns(grnLogs);
     setPrechecks(checks);
+    setInventoryPacks(packs);
   };
 
   useEffect(() => {
@@ -340,6 +338,7 @@ export default function App() {
             rawMaterials={rawMaterials}
             inventoryPacks={inventoryPacks}
             productionOrders={productionOrders}
+            grns={grns}
             onSaveRawMaterial={async (payload) => {
               await handleSave("raw_materials", payload, "บันทึกข้อมูลวัตถุดิบเคมีดิบรอยร้อยแล้ว!");
             }}
@@ -347,17 +346,10 @@ export default function App() {
               await handleDelete("raw_materials", id, "ลบข้อมูลวัตถุดิบเคมีดิบเรียบร้อยแล้ว!");
             }}
             onSaveInventoryPack={async (payload) => {
-              if (payload.id) {
-                setInventoryPacks(prev => prev.map(p => p.id === payload.id ? payload : p));
-              } else {
-                const nextId = inventoryPacks.length > 0 ? Math.max(...inventoryPacks.map(p => p.id)) + 1 : 1;
-                setInventoryPacks(prev => [...prev, { ...payload, id: nextId }]);
-              }
-              showToast("บันทึกข้อมูลบรรจุภัณฑ์สำเร็จ!", "success");
+              await handleSave("inventory_pack", payload, "บันทึกข้อมูลบรรจุภัณฑ์สำเร็จ!");
             }}
             onDeleteInventoryPack={async (id) => {
-              setInventoryPacks(prev => prev.filter(p => p.id !== id));
-              showToast("ลบข้อมูลบรรจุภัณฑ์สำเร็จ!", "success");
+              await handleDelete("inventory_pack", id, "ลบข้อมูลบรรจุภัณฑ์สำเร็จ!");
             }}
           />
         );
@@ -372,6 +364,12 @@ export default function App() {
             grns={grns}
             packingOrders={packingOrders}
             prechecks={prechecks}
+          />
+        );
+      case "manual":
+        return (
+          <UserManual 
+            onNavigate={(page) => setActivePage(page)}
           />
         );
       default:

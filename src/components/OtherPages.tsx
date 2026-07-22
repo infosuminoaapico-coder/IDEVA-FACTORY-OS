@@ -1176,18 +1176,24 @@ export function GrnsPage({ grns, rawMaterials, purchaseOrders, onAddGrn }: GrnsP
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [code, setCode] = useState("");
   const [purchaseOrderId, setPurchaseOrderId] = useState<number | "">("");
+  const [poNumber, setPoNumber] = useState("");
   const [materialId, setMaterialId] = useState<number | "">("");
   const [receivedQty, setReceivedQty] = useState(0);
+  const [unitPrice, setUnitPrice] = useState<number>(0);
   const [lotNumber, setLotNumber] = useState("");
+  const [receiveDate, setReceiveDate] = useState(new Date().toISOString().slice(0, 10));
   const [expiryDate, setExpiryDate] = useState("");
   const [receiver, setReceiver] = useState("สมศักดิ์ คลังสินค้า");
 
   const openFormModal = () => {
     setCode(`GRN-2026-${String(grns.length + 19).padStart(4, "0")}`);
     setPurchaseOrderId("");
+    setPoNumber("");
     setMaterialId("");
     setReceivedQty(100);
+    setUnitPrice(0);
     setLotNumber(`L${new Date().toISOString().slice(2, 10).replace(/-/g, "")}-001`);
+    setReceiveDate(new Date().toISOString().slice(0, 10));
     setExpiryDate(new Date(Date.now() + 365*2*24*60*60*1000).toISOString().slice(0, 10));
     setIsModalOpen(true);
   };
@@ -1195,26 +1201,40 @@ export function GrnsPage({ grns, rawMaterials, purchaseOrders, onAddGrn }: GrnsP
   const handlePurchaseOrderChange = (poId: number) => {
     setPurchaseOrderId(poId);
     const matchedPo = purchaseOrders.find(po => po.id === poId);
-    if (matchedPo && matchedPo.items && matchedPo.items.length > 0) {
-      const firstItem = matchedPo.items[0];
-      setMaterialId(firstItem.raw_material_id);
-      setReceivedQty(firstItem.quantity);
+    if (matchedPo) {
+      setPoNumber(matchedPo.code);
+      if (matchedPo.items && matchedPo.items.length > 0) {
+        const firstItem = matchedPo.items[0];
+        setMaterialId(firstItem.raw_material_id);
+        setReceivedQty(firstItem.quantity);
+        setUnitPrice(firstItem.unit_price || 0);
+      }
+    }
+  };
+
+  const handleMaterialChange = (rmId: number) => {
+    setMaterialId(rmId);
+    const rm = rawMaterials.find(r => r.id === rmId);
+    if (rm && rm.unit_price) {
+      setUnitPrice(rm.unit_price);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!purchaseOrderId || !materialId || !receivedQty || !lotNumber.trim()) return;
+    if (!materialId || !receivedQty || !lotNumber.trim()) return;
     
     await onAddGrn({
       code,
-      purchase_order_id: Number(purchaseOrderId),
+      purchase_order_id: purchaseOrderId ? Number(purchaseOrderId) : undefined,
+      po_number: poNumber || undefined,
       raw_material_id: Number(materialId),
       lot_number: lotNumber,
       expiry_date: expiryDate,
       received_qty: receivedQty,
+      unit_price: unitPrice,
       receiver,
-      receive_date: new Date().toISOString().slice(0, 10)
+      receive_date: receiveDate
     });
     setIsModalOpen(false);
   };
@@ -1246,9 +1266,11 @@ export function GrnsPage({ grns, rawMaterials, purchaseOrders, onAddGrn }: GrnsP
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 uppercase">
                 <th className="p-3">เลขที่ GRN</th>
+                <th className="p-3">วันที่นำเข้า</th>
                 <th className="p-3">อ้างอิงใบสั่งซื้อ PO</th>
                 <th className="p-3">ชื่อวัตถุดิบเคมี</th>
                 <th className="p-3 text-right">จำนวนรับเข้า</th>
+                <th className="p-3 text-right">ราคา/หน่วย</th>
                 <th className="p-3">Lot Number รับเข้า</th>
                 <th className="p-3">วันหมดอายุล๊อต</th>
                 <th className="p-3">ผู้เซ็นต์รับเข้า</th>
@@ -1258,21 +1280,26 @@ export function GrnsPage({ grns, rawMaterials, purchaseOrders, onAddGrn }: GrnsP
               {grns.map(g => {
                 const mat = rawMaterials.find(rm => rm.id === g.raw_material_id);
                 const po = purchaseOrders.find(p => p.id === g.purchase_order_id);
+                const displayPo = po ? po.code : (g.po_number || `PO-${g.purchase_order_id || '001'}`);
                 return (
-                  <tr key={g.id}>
+                  <tr key={g.id} className="hover:bg-slate-50/80">
                     <td className="p-3 font-bold font-mono text-emerald-600">{g.code}</td>
-                    <td className="p-3 font-mono text-slate-500">{po ? po.code : `PRM-2026-002${g.purchase_order_id}`}</td>
-                    <td className="p-3 font-semibold text-slate-800">{mat ? mat.name : "วัตถุดิบเคมีทั่วไป"}</td>
-                    <td className="p-3 text-right font-extrabold font-mono text-slate-800">{g.received_qty.toLocaleString()} {mat ? mat.unit : ""}</td>
+                    <td className="p-3 font-mono text-slate-500">{g.receive_date || new Date().toISOString().slice(0, 10)}</td>
+                    <td className="p-3 font-mono text-slate-600 font-bold">{displayPo}</td>
+                    <td className="p-3 font-bold text-slate-800">{mat ? mat.name : "วัตถุดิบเคมีทั่วไป"}</td>
+                    <td className="p-3 text-right font-extrabold font-mono text-slate-800">{g.received_qty.toLocaleString()} {mat ? (mat.unit || "KG.") : ""}</td>
+                    <td className="p-3 text-right font-mono text-slate-700 font-bold">
+                      {g.unit_price ? `฿${g.unit_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}
+                    </td>
                     <td className="p-3 font-bold font-mono text-emerald-700">{g.lot_number}</td>
-                    <td className="p-3 font-mono text-slate-400">{g.expiry_date}</td>
+                    <td className="p-3 font-mono text-slate-600 font-bold">{g.expiry_date}</td>
                     <td className="p-3 text-slate-500 font-semibold">{g.receiver}</td>
                   </tr>
                 );
               })}
               {grns.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400 italic">
+                  <td colSpan={9} className="p-8 text-center text-slate-400 italic">
                     ยังไม่มีข้อมูลการรับเคมีภัณฑ์เข้าคลัง
                   </td>
                 </tr>
@@ -1285,7 +1312,7 @@ export function GrnsPage({ grns, rawMaterials, purchaseOrders, onAddGrn }: GrnsP
       {/* บันทึกรับเข้า (GRN) Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col">
             <div className="flex items-center justify-between p-5 border-b border-slate-150 bg-slate-50/85">
               <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-slate-850 flex items-center gap-2">
                 <Truck className="w-5 h-5 text-emerald-600" />
@@ -1300,7 +1327,7 @@ export function GrnsPage({ grns, rawMaterials, purchaseOrders, onAddGrn }: GrnsP
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col flex-1">
-              <div className="p-6 md:p-8 space-y-5">
+              <div className="p-6 md:p-8 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">เลขที่ใบรับเข้า (GRN)</label>
@@ -1313,18 +1340,41 @@ export function GrnsPage({ grns, rawMaterials, purchaseOrders, onAddGrn }: GrnsP
                   </div>
 
                   <div>
-                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">อ้างอิงใบสั่งซื้อ PO <span className="text-red-500">*</span></label>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">วันที่นำเข้า (Import Date)</label>
+                    <input
+                      type="date"
+                      value={receiveDate}
+                      onChange={(e) => setReceiveDate(e.target.value)}
+                      required
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white text-slate-800"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">อ้างอิงใบสั่งซื้อ PO</label>
                     <select
                       value={purchaseOrderId}
                       onChange={(e) => handlePurchaseOrderChange(Number(e.target.value))}
-                      required
                       className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white cursor-pointer"
                     >
-                      <option value="">-- เลือกใบจัดซื้อ PO --</option>
+                      <option value="">-- เลือกใบจัดซื้อ PO (ถ้ามี) --</option>
                       {purchaseOrders.map(po => (
                         <option key={po.id} value={po.id}>{po.code} ({po.supplier})</option>
                       ))}
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">เลขที่ PO (กรอกเองได้)</label>
+                    <input
+                      type="text"
+                      value={poNumber}
+                      onChange={(e) => setPoNumber(e.target.value)}
+                      placeholder="เช่น PO-2026-088"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 bg-white text-slate-800"
+                    />
                   </div>
                 </div>
 
@@ -1332,20 +1382,20 @@ export function GrnsPage({ grns, rawMaterials, purchaseOrders, onAddGrn }: GrnsP
                   <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">เลือกวัตถุดิบเคมีที่รับเข้า <span className="text-red-500">*</span></label>
                   <select
                     value={materialId}
-                    onChange={(e) => setMaterialId(Number(e.target.value))}
+                    onChange={(e) => handleMaterialChange(Number(e.target.value))}
                     required
                     className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold focus:outline-none focus:border-blue-500 bg-white cursor-pointer"
                   >
                     <option value="">-- เลือกรายการเคมีภัณฑ์ --</option>
                     {rawMaterials.map(rm => (
-                      <option key={rm.id} value={rm.id}>{rm.code} - {rm.name}</option>
+                      <option key={rm.id} value={rm.id}>{rm.code} - {rm.name} ({rm.supplier_name || rm.supplier || 'ทั่วไป'})</option>
                     ))}
                   </select>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">จำนวนที่รับจริง</label>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">จำนวนรับจริง</label>
                     <input
                       type="number"
                       step="0.01"
@@ -1358,6 +1408,20 @@ export function GrnsPage({ grns, rawMaterials, purchaseOrders, onAddGrn }: GrnsP
                   </div>
 
                   <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">ราคาต่อหน่วย (บาท)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={unitPrice}
+                      onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 bg-white text-right text-slate-800"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
                     <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">Lot Number สารเคมี <span className="text-red-500">*</span></label>
                     <input
                       type="text"
@@ -1368,29 +1432,28 @@ export function GrnsPage({ grns, rawMaterials, purchaseOrders, onAddGrn }: GrnsP
                       className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 bg-white text-slate-800"
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">วันหมดอายุล๊อต</label>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">วันหมดอายุล๊อต <span className="text-red-500">*</span></label>
                     <input
                       type="date"
                       value={expiryDate}
                       onChange={(e) => setExpiryDate(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white text-slate-800"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">ผู้เซ็นต์รับของเข้า</label>
-                    <input
-                      type="text"
-                      value={receiver}
-                      onChange={(e) => setReceiver(e.target.value)}
                       required
                       className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white text-slate-800"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">ผู้เซ็นต์รับของเข้า</label>
+                  <input
+                    type="text"
+                    value={receiver}
+                    onChange={(e) => setReceiver(e.target.value)}
+                    required
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white text-slate-800"
+                  />
                 </div>
               </div>
 
@@ -1424,6 +1487,7 @@ interface InventoryPageProps {
   rawMaterials: RawMaterial[];
   inventoryPacks: InventoryPack[];
   productionOrders: ProductionOrder[];
+  grns?: Grn[];
   onSaveRawMaterial?: (rm: any) => Promise<void>;
   onDeleteRawMaterial?: (id: number) => Promise<void>;
   onSaveInventoryPack?: (ip: any) => Promise<void>;
@@ -1433,6 +1497,7 @@ export function InventoryPage({
   rawMaterials, 
   inventoryPacks, 
   productionOrders,
+  grns = [],
   onSaveRawMaterial,
   onDeleteRawMaterial,
   onSaveInventoryPack,
@@ -1440,6 +1505,8 @@ export function InventoryPage({
 }: InventoryPageProps) {
   const [activeTab, setActiveTab] = useState("raw");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedSupplierFilter, setSelectedSupplierFilter] = useState("all");
+  const [isFefoModalOpen, setIsFefoModalOpen] = useState(false);
 
   // Modals state
   const [isRawModalOpen, setIsRawModalOpen] = useState(false);
@@ -1451,9 +1518,12 @@ export function InventoryPage({
   // Raw Material Form States
   const [rawCode, setRawCode] = useState("");
   const [rawName, setRawName] = useState("");
-  const [rawUnit, setRawUnit] = useState("ลิตร");
+  const [rawUnit, setRawUnit] = useState("KG.");
   const [rawStockQty, setRawStockQty] = useState<number>(0);
   const [rawMinStock, setRawMinStock] = useState<number>(10);
+  const [rawUnitPrice, setRawUnitPrice] = useState<number>(0);
+  const [rawSupplierName, setRawSupplierName] = useState("");
+  const [rawImageUrl, setRawImageUrl] = useState("");
   const [rawStatus, setRawStatus] = useState("active");
 
   // Pack Form States
@@ -1461,17 +1531,24 @@ export function InventoryPage({
   const [packType, setPackType] = useState("ขวด");
   const [packName, setPackName] = useState("");
   const [packQty, setPackQty] = useState<number>(0);
-  const [packUnit, setPackUnit] = useState("ชิ้น");
+  const [packUnit, setPackUnit] = useState("PCS.");
+  const [packImageUrl, setPackImageUrl] = useState("");
   const [packStatus, setPackStatus] = useState("active");
+
+  // Unique list of suppliers from raw materials
+  const supplierList = Array.from(new Set(rawMaterials.map(rm => rm.supplier_name || rm.supplier).filter(Boolean)));
 
   const openRawModal = (rm: RawMaterial | null = null) => {
     if (rm) {
       setEditingRaw(rm);
       setRawCode(rm.code);
       setRawName(rm.name);
-      setRawUnit(rm.unit);
+      setRawUnit(rm.unit || "KG.");
       setRawStockQty(rm.stock_qty);
       setRawMinStock(rm.min_stock);
+      setRawUnitPrice(rm.unit_price || 0);
+      setRawSupplierName(rm.supplier_name || rm.supplier || "");
+      setRawImageUrl(rm.image_url || "");
       setRawStatus(rm.status);
     } else {
       const nextNum = rawMaterials.length > 0 
@@ -1483,9 +1560,12 @@ export function InventoryPage({
       setRawCode(`RM-${String(nextNum).padStart(3, "0")}`);
       setEditingRaw(null);
       setRawName("");
-      setRawUnit("ลิตร");
+      setRawUnit("KG.");
       setRawStockQty(0);
       setRawMinStock(20);
+      setRawUnitPrice(0);
+      setRawSupplierName("");
+      setRawImageUrl("");
       setRawStatus("active");
     }
     setIsRawModalOpen(true);
@@ -1502,6 +1582,10 @@ export function InventoryPage({
         unit: rawUnit,
         stock_qty: Number(rawStockQty) || 0,
         min_stock: Number(rawMinStock) || 0,
+        unit_price: Number(rawUnitPrice) || 0,
+        supplier_name: rawSupplierName.trim(),
+        supplier: rawSupplierName.trim(),
+        image_url: rawImageUrl.trim(),
         status: rawStatus
       });
     }
@@ -1589,12 +1673,16 @@ export function InventoryPage({
       return acc;
     }, []);
 
-  // Filter lists based on Search term
+  // Filter lists based on Search term and Supplier filter
   const term = searchTerm.toLowerCase().trim();
-  const filteredRaw = rawMaterials.filter(rm => 
-    (rm.code || "").toLowerCase().includes(term) || 
-    (rm.name || "").toLowerCase().includes(term)
-  );
+  const filteredRaw = rawMaterials.filter(rm => {
+    const matchesSearch = (rm.code || "").toLowerCase().includes(term) || 
+                          (rm.name || "").toLowerCase().includes(term) ||
+                          (rm.supplier_name || rm.supplier || "").toLowerCase().includes(term);
+    const matchesSupplier = selectedSupplierFilter === "all" || 
+                            (rm.supplier_name || rm.supplier) === selectedSupplierFilter;
+    return matchesSearch && matchesSupplier;
+  });
   
   const filteredPacks = inventoryPacks.filter(ip => 
     (ip.code || "").toLowerCase().includes(term) || 
@@ -1611,36 +1699,62 @@ export function InventoryPage({
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
       {/* Search and Quick Action Toolbar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="relative flex-1 max-w-md">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-            <Search className="w-4 h-4" />
-          </span>
-          <input
-            type="text"
-            placeholder="ค้นหาตามรหัส หรือชื่อสินค้าในคลัง..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-xs md:text-sm focus:outline-none focus:border-blue-500 bg-white"
-          />
-          {searchTerm && (
-            <button 
-              onClick={() => setSearchTerm("")}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 text-xs font-bold"
-            >
-              ล้าง
-            </button>
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+          <div className="relative flex-1 max-w-md">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+              <Search className="w-4 h-4" />
+            </span>
+            <input
+              type="text"
+              placeholder="ค้นหาตามรหัส, ชื่อ หรือร้านผู้จำหน่าย..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-xs md:text-sm focus:outline-none focus:border-blue-500 bg-white"
+            />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm("")}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 text-xs font-bold"
+              >
+                ล้าง
+              </button>
+            )}
+          </div>
+
+          {activeTab === "raw" && (
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-slate-400 hidden sm:block" />
+              <select
+                value={selectedSupplierFilter}
+                onChange={(e) => setSelectedSupplierFilter(e.target.value)}
+                className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer"
+              >
+                <option value="all">🏬 แยกตามผู้จำหน่าย: ทั้งหมด ({supplierList.length} ร้าน)</option>
+                {supplierList.map((sup, idx) => (
+                  <option key={idx} value={sup}>{sup}</option>
+                ))}
+              </select>
+            </div>
           )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {activeTab === "raw" && (
-            <button
-              onClick={() => openRawModal()}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs md:text-sm font-extrabold flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/10 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" /> เพิ่มวัตถุดิบเคมีดิบ
-            </button>
+            <>
+              <button
+                onClick={() => setIsFefoModalOpen(true)}
+                className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Calendar className="w-4 h-4 text-amber-600" /> ตรวจสอบล๊อตตามหลัก FEFO
+              </button>
+              <button
+                onClick={() => openRawModal()}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs md:text-sm font-extrabold flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/10 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" /> เพิ่มวัตถุดิบเคมีดิบ
+              </button>
+            </>
           )}
           {activeTab === "pack" && (
             <button
@@ -1656,7 +1770,7 @@ export function InventoryPage({
       {/* Tab controls */}
       <div className="flex border-b border-slate-200 bg-slate-50 p-1.5 rounded-xl border">
         {[
-          { id: "raw", label: "วัตถุดิบเคมีดิบ", count: filteredRaw.length },
+          { id: "raw", label: "วัตถุดิบเคมีดิบ (แยกตามผู้จำหน่าย)", count: filteredRaw.length },
           { id: "pack", label: "บรรจุภัณฑ์ (HDPE/ฉลาก)", count: filteredPacks.length },
           { id: "fg", label: "ผลิตภัณฑ์สำเร็จรูป (Finished Goods)", count: filteredFG.length }
         ].map(tb => (
@@ -1686,11 +1800,14 @@ export function InventoryPage({
             <table className="w-full text-left text-xs text-[#3c4043] border-collapse">
               <thead>
                 <tr className="bg-[#f1f3f4] text-[11px] text-[#3c4043]">
+                  <th className="p-2 border border-[#cccccc] font-normal w-12 text-center">รูป</th>
                   <th className="p-2 border border-[#cccccc] font-normal">รหัสเคมีดิบ</th>
                   <th className="p-2 border border-[#cccccc] font-normal">ชื่อสารสกัดเคมี</th>
+                  <th className="p-2 border border-[#cccccc] font-normal">ร้านผู้จำหน่าย (Supplier)</th>
+                  <th className="p-2 border border-[#cccccc] font-normal text-right">ราคา/หน่วย</th>
                   <th className="p-2 border border-[#cccccc] font-normal text-right">จำนวนคงคลัง</th>
                   <th className="p-2 border border-[#cccccc] font-normal text-center">หน่วยนับ</th>
-                  <th className="p-2 border border-[#cccccc] font-normal text-right">จำนวนขั้นต่ำปลอดภัย</th>
+                  <th className="p-2 border border-[#cccccc] font-normal text-right">มูลค่าสต็อกรวม</th>
                   <th className="p-2 border border-[#cccccc] font-normal text-center">ระดับสถานะสต็อก</th>
                   <th className="p-2 border border-[#cccccc] font-normal text-center w-24">ดำเนินการ</th>
                 </tr>
@@ -1698,17 +1815,39 @@ export function InventoryPage({
               <tbody>
                 {filteredRaw.map(rm => {
                   const isLow = rm.stock_qty <= rm.min_stock;
+                  const unitPrice = rm.unit_price || 0;
+                  const totalVal = rm.stock_qty * unitPrice;
+
                   return (
                     <tr key={rm.id} className="odd:bg-white even:bg-[#f8f9fa] hover:bg-[#e8f0fe]/70 transition-colors">
-                      <td className="p-2 border border-[#e0e0e0] font-normal font-mono text-slate-800">{rm.code}</td>
-                      <td className="p-2 border border-[#e0e0e0] font-normal text-slate-800">{rm.name}</td>
-                      <td className={`p-2 border border-[#e0e0e0] text-right font-normal font-mono ${isLow ? 'text-red-600 font-normal' : 'text-slate-800'}`}>
+                      <td className="p-2 border border-[#e0e0e0] text-center">
+                        {rm.image_url ? (
+                          <img src={rm.image_url} alt={rm.name} className="w-9 h-9 object-cover rounded-lg border border-slate-200 mx-auto shadow-sm" />
+                        ) : (
+                          <div className="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] text-slate-400 font-bold mx-auto">
+                            เคมี
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-2 border border-[#e0e0e0] font-bold font-mono text-blue-700">{rm.code}</td>
+                      <td className="p-2 border border-[#e0e0e0] font-bold text-slate-800">{rm.name}</td>
+                      <td className="p-2 border border-[#e0e0e0]">
+                        <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                          {rm.supplier_name || rm.supplier || "ผู้จำหน่ายทั่วไป"}
+                        </span>
+                      </td>
+                      <td className="p-2 border border-[#e0e0e0] text-right font-mono text-slate-700 font-bold">
+                        ฿{unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className={`p-2 border border-[#e0e0e0] text-right font-bold font-mono ${isLow ? 'text-red-600 font-extrabold' : 'text-slate-800'}`}>
                         {rm.stock_qty.toLocaleString()}
                       </td>
-                      <td className="p-2 border border-[#e0e0e0] text-center text-slate-500 font-normal">{rm.unit}</td>
-                      <td className="p-2 border border-[#e0e0e0] text-right font-mono text-slate-400 font-normal">{rm.min_stock}</td>
+                      <td className="p-2 border border-[#e0e0e0] text-center font-bold text-slate-600">{rm.unit || "KG."}</td>
+                      <td className="p-2 border border-[#e0e0e0] text-right font-mono font-extrabold text-emerald-700">
+                        ฿{totalVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
                       <td className="p-2 border border-[#e0e0e0] text-center">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-normal ${
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           isLow 
                             ? "bg-red-50 text-red-700 border border-red-250" 
                             : "bg-emerald-50 text-emerald-700 border border-emerald-250"
@@ -1739,8 +1878,8 @@ export function InventoryPage({
                 })}
                 {filteredRaw.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-400 border border-[#e0e0e0] font-normal">
-                      ไม่พบข้อมูลวัตถุดิบเคมีดิบที่ตรงกับความต้องการค้นหา
+                    <td colSpan={10} className="p-8 text-center text-slate-400 border border-[#e0e0e0] font-normal">
+                      ไม่พบข้อมูลวัตถุดิบเคมีดิบที่ตรงกับเงื่อนไขการค้นหา
                     </td>
                   </tr>
                 )}
@@ -1898,12 +2037,13 @@ export function InventoryPage({
                       onChange={(e) => setRawUnit(e.target.value)}
                       className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white cursor-pointer"
                     >
-                      <option value="ลิตร">ลิตร (Litre)</option>
-                      <option value="กก.">กิโลกรัม (Kg)</option>
-                      <option value="มล.">มิลลิลิตร (ml)</option>
-                      <option value="ชิ้น">ชิ้น (Pcs)</option>
-                      <option value="ม้วน">ม้วน (Roll)</option>
-                      <option value="ถัง">ถัง (Drum)</option>
+                      <option value="KG.">KG. (Kilogram)</option>
+                      <option value="G.">G. (Gram)</option>
+                      <option value="L.">L. (Litre)</option>
+                      <option value="ML.">ML. (Millilitre)</option>
+                      <option value="PCS.">PCS. (Pieces)</option>
+                      <option value="BAG">BAG (Bag)</option>
+                      <option value="DRUM">DRUM (Drum)</option>
                     </select>
                   </div>
                 </div>
@@ -1918,6 +2058,53 @@ export function InventoryPage({
                     required
                     className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white transition-all text-slate-800"
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">ร้านผู้จำหน่ายวัตถุดิบ (Supplier)</label>
+                    <input
+                      type="text"
+                      value={rawSupplierName}
+                      onChange={(e) => setRawSupplierName(e.target.value)}
+                      placeholder="เช่น บริษัท โกลบอลเคมีคอล จำกัด"
+                      list="suppliers-list"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-semibold focus:outline-none focus:border-blue-500 bg-white text-slate-800"
+                    />
+                    <datalist id="suppliers-list">
+                      {supplierList.map((sup, idx) => (
+                        <option key={idx} value={sup} />
+                      ))}
+                    </datalist>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">ราคาประเมินต่อหน่วย (บาท)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={rawUnitPrice}
+                      onChange={(e) => setRawUnitPrice(parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-bold font-mono focus:outline-none focus:border-blue-500 bg-white text-right text-slate-800"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs md:text-sm font-bold text-slate-700 uppercase mb-1.5">URL รูปภาพวัตถุดิบ / ภาพถ่ายเคมี</label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="url"
+                      value={rawImageUrl}
+                      onChange={(e) => setRawImageUrl(e.target.value)}
+                      placeholder="https://example.com/chemical-image.jpg"
+                      className="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-xs md:text-sm font-mono focus:outline-none focus:border-blue-500 bg-white text-slate-800"
+                    />
+                    {rawImageUrl && (
+                      <img src={rawImageUrl} alt="Preview" className="w-10 h-10 object-cover rounded-xl border border-slate-200" />
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -2093,6 +2280,114 @@ export function InventoryPage({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* FEFO Inspection Modal */}
+      {isFefoModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-5 border-b border-slate-150 bg-amber-50">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-amber-600" />
+                <div>
+                  <h3 className="text-base font-extrabold text-amber-900">
+                    ลำดับการดึงสารเคมีตามหลัก FEFO (First Expired, First Out)
+                  </h3>
+                  <p className="text-xs text-amber-700 font-medium">
+                    สารเคมีล๊อตที่มีวันหมดอายุเร็วที่สุดจะถูกจัดลำดับให้ดึงไปผสมและผลิตก่อนเสมอ
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsFefoModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-650 hover:bg-slate-200/50 rounded-lg cursor-pointer transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4">
+              <div className="bg-amber-100/60 border border-amber-200 p-4 rounded-xl text-xs text-amber-900 space-y-1">
+                <p className="font-bold flex items-center gap-1">
+                  💡 คำอธิบายการคำนวณต้นทุนและการดึงวัตถุดิบ (FEFO):
+                </p>
+                <p>
+                  1. **การเบิกจ่ายสารเคมี (FEFO)**: เมื่อเริ่มต้นสั่งผลิตในระบบ ระบบจะตรวจสอบ Lot ในคลัง GRN และเลือก Lot ที่มีวันหมดอายุใกล้ที่สุดก่อนโดยอัตโนมัติ เพื่อป้องกันสารเคมีเสื่อมสภาพ
+                </p>
+                <p>
+                  2. **อ้างอิงต้นทุนผลิต**: ต้นทุนการผลิตต่อ 1 หน่วย คำนวณจาก (ปริมาณสัดส่วนในสูตร BOM × ราคาวัตถุดิบต่อหน่วยจาก Supplier) รวมกับ ค่าแรง + ค่าบรรจุภัณฑ์
+                </p>
+              </div>
+
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
+                    <tr>
+                      <th className="p-3">ลำดับดึงใช้</th>
+                      <th className="p-3">รหัส / ชื่อวัตถุดิบ</th>
+                      <th className="p-3 font-mono">Lot Number</th>
+                      <th className="p-3 text-right">จำนวนคงเหลือ</th>
+                      <th className="p-3">วันหมดอายุ</th>
+                      <th className="p-3 text-center">สถานะ FEFO</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-sans">
+                    {grns
+                      .slice()
+                      .sort((a, b) => new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime())
+                      .map((g, idx) => {
+                        const rm = rawMaterials.find(r => r.id === g.raw_material_id);
+                        const isFirstOut = idx === 0;
+                        return (
+                          <tr key={g.id} className={isFirstOut ? "bg-amber-50/60 font-semibold" : ""}>
+                            <td className="p-3 font-bold text-center">
+                              <span className={`w-6 h-6 rounded-full inline-flex items-center justify-center text-xs ${isFirstOut ? "bg-amber-500 text-white font-extrabold" : "bg-slate-200 text-slate-700"}`}>
+                                {idx + 1}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <div className="font-bold text-slate-800">{rm ? rm.name : "วัตถุดิบเคมี"}</div>
+                              <div className="text-[10px] text-slate-500 font-mono">{rm ? rm.code : ""}</div>
+                            </td>
+                            <td className="p-3 font-mono font-bold text-emerald-700">{g.lot_number}</td>
+                            <td className="p-3 text-right font-mono font-bold">{g.received_qty.toLocaleString()} {rm?.unit || "KG."}</td>
+                            <td className="p-3 font-mono font-bold text-slate-800">{g.expiry_date}</td>
+                            <td className="p-3 text-center">
+                              {isFirstOut ? (
+                                <span className="px-2.5 py-1 bg-amber-500 text-white font-extrabold text-[10px] rounded-full shadow-sm">
+                                  🔥 ดึงผลิตก่อน (FEFO #1)
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] rounded-full">
+                                  สำรองลำดับที่ {idx + 1}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    {grns.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="p-6 text-center text-slate-400 italic">
+                          ยังไม่มีล๊อตรับเข้าในระบบ GRN
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                onClick={() => setIsFefoModalOpen(false)}
+                className="px-5 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 cursor-pointer"
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
           </div>
         </div>
       )}
