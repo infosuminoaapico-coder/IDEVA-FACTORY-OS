@@ -77,54 +77,102 @@ export const fallbackDB: Record<string, any[]> = {
       address: "456 ถนนเพชรเกษม แขวงบางหว้า เขตภาษีเจริญ กรุงเทพฯ 10160",
       status: "active",
       created_at: "2026-06-01 14:00:00"
+    },
+    {
+      id: 4,
+      code: "C68-073",
+      name: "คุณวิมลมณี ไสบาล",
+      contact: "คุณวิมลมณี",
+      phone: "081-234-5678",
+      email: "wimolmanee@example.com",
+      tax_id: "0109876543210",
+      address: "123/45 ถนนสุขุมวิท เขตวัฒนา กรุงเทพฯ 10110",
+      status: "active",
+      created_at: "2026-06-10 11:00:00"
     }
   ],
   products: [
     { id: 1, code: "P-001", name: "น้ำยาเคลือบแก้วพรีเมียม A", type: "Liquid", version: "v1.0", status: "active" },
     { id: 2, code: "P-002", name: "สารฆ่าเชื้อประสิทธิภาพสูง B", type: "Liquid", version: "v2.1", status: "active" },
-    { id: 3, code: "P-003", name: "ผงซักล้างอุตสาหกรรมสูตรเข้มข้น C", type: "Powder", version: "v1.0", status: "active" }
+    { id: 3, code: "P-003", name: "ผงซักล้างอุตสาหกรรมสูตรเข้มข้น C", type: "Powder", version: "v1.0", status: "active" },
+    { id: 4, code: "IDV-SP-003", name: "Rose Soap (สบู่กุหลาบ)", type: "Liquid", version: "v1.0", status: "active" }
   ],
   raw_materials: [
     { id: 1, code: "RM-001", name: "Ethanol 96%", unit: "L.", stock_qty: 120, min_stock: 50, unit_price: 65, supplier_id: 1, supplier_name: "บริษัท โกลบอลเคมีคอล ซัพพลาย จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&auto=format&fit=crop" },
     { id: 2, code: "RM-002", name: "Glycerin USP", unit: "L.", stock_qty: 45, min_stock: 30, unit_price: 90, supplier_id: 1, supplier_name: "บริษัท โกลบอลเคมีคอล ซัพพลาย จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1608248597280-92fb13e64f77?w=300&auto=format&fit=crop" },
     { id: 3, code: "RM-003", name: "Sodium Hydroxide (NaOH)", unit: "KG.", stock_qty: 15, min_stock: 20, unit_price: 55, supplier_id: 2, supplier_name: "บริษัท ไทยอินกรีเดียนท์ จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=300&auto=format&fit=crop" },
     { id: 4, code: "RM-004", name: "Hydrogen Peroxide 35%", unit: "L.", stock_qty: 85, min_stock: 40, unit_price: 110, supplier_id: 3, supplier_name: "บริษัท นิปปอน เคมิเคิล (ประเทศไทย) จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1585435557343-3b092031a831?w=300&auto=format&fit=crop" },
-    { id: 5, code: "RM-005", name: "Citric Acid Anhydrous", unit: "KG.", stock_qty: 32, min_stock: 25, unit_price: 70, supplier_id: 2, supplier_name: "บริษัท ไทยอินกรีเดียนท์ จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1584017911766-d451b3d0e843?w=300&auto=format&fit=crop" }
+    { id: 5, code: "RM-005", name: "Citric Acid Anhydrous", unit: "KG.", stock_qty: 32, min_stock: 25, unit_price: 70, supplier_id: 2, supplier_name: "บริษัท ไทยอินกรีเดียนท์ จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1584017911766-d451b3d0e843?w=300&auto=format&fit=crop" },
+    { id: 6, code: "RMSS-0010", name: "เบสใส", unit: "KG.", stock_qty: 500, min_stock: 100, unit_price: 85, supplier_id: 2, supplier_name: "บริษัท ไทยอินกรีเดียนท์ จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=300&auto=format&fit=crop" },
+    { id: 7, code: "RMOP-0013", name: "Gold glitter mica / Gold Super Sparkle Mica (Size D, 200 Micron)", unit: "G.", stock_qty: 1000, min_stock: 200, unit_price: 1500, supplier_id: 1, supplier_name: "บริษัท โกลบอลเคมีคอล ซัพพลาย จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1608248597280-92fb13e64f77?w=300&auto=format&fit=crop" },
+    { id: 8, code: "RMCL-0009", name: "สีชมพูละลายน้ำ", unit: "G.", stock_qty: 500, min_stock: 100, unit_price: 800, supplier_id: 2, supplier_name: "บริษัท ไทยอินกรีเดียนท์ จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1584017911766-d451b3d0e843?w=300&auto=format&fit=crop" },
+    { id: 9, code: "RMFL-0232", name: "กลิ่นดอกกุหลาบ", unit: "G.", stock_qty: 2000, min_stock: 500, unit_price: 1200, supplier_id: 1, supplier_name: "บริษัท โกลบอลเคมีคอล ซัพพลาย จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&auto=format&fit=crop" },
+    { id: 10, code: "RMVB-003", name: "Vitamin B3 (Niacinamide)", unit: "KG.", stock_qty: 100, min_stock: 20, unit_price: 450, supplier_id: 1, supplier_name: "บริษัท โกลบอลเคมีคอล ซัพพลาย จำกัด", status: "active", image_url: "https://images.unsplash.com/photo-1584017911766-d451b3d0e843?w=300&auto=format&fit=crop" }
   ],
   bom_recipes: [
     {
       id: 1,
       product_id: 1,
+      product_code: "P-001",
+      product_name: "น้ำยาเคลือบแก้วพรีเมียม A",
+      part_no: "PART-001",
       version: "v1.0",
       status: "active",
       notes: "สูตรเคลือบแก้วมาตรฐานโรงงาน",
       materials: [
-        { material_name: "Ethanol 96%", quantity: 100, unit: "ลิตร", notes: "ส่วนผสมหลัก" },
-        { material_name: "Glycerin USP", quantity: 10, unit: "ลิตร", notes: "เพิ่มความหนืด" },
-        { material_name: "Citric Acid", quantity: 2, unit: "กก.", notes: "ปรับค่าความเป็นกรดด่าง" }
+        { part: "A", material_code: "RM-001", material_name: "Ethanol 96%", quantity: 100, unit: "L.", notes: "ส่วนผสมหลัก" },
+        { part: "A", material_code: "RM-002", material_name: "Glycerin USP", quantity: 10, unit: "L.", notes: "เพิ่มความหนืด" },
+        { part: "B", material_code: "RM-005", material_name: "Citric Acid Anhydrous", quantity: 2, unit: "KG.", notes: "ปรับค่าความเป็นกรดด่าง" }
       ]
     },
     {
       id: 2,
       product_id: 2,
+      product_code: "P-002",
+      product_name: "สารฆ่าเชื้อประสิทธิภาพสูง B",
+      part_no: "PART-002",
       version: "v2.1",
       status: "active",
       notes: "สูตรสารฆ่าเชื้อประสิทธิภาพสูง",
       materials: [
-        { material_name: "Ethanol 96%", quantity: 150, unit: "ลิตร", notes: "ส่วนประกอบหลัก" },
-        { material_name: "Hydrogen Peroxide 35%", quantity: 20, unit: "ลิตร", notes: "ฆ่าสปอร์และเชื้อไวรัส" },
-        { material_name: "Glycerin USP", quantity: 5, unit: "ลิตร", notes: "รักษาความชุ่มชื้น" }
+        { part: "A", material_code: "RM-001", material_name: "Ethanol 96%", quantity: 150, unit: "L.", notes: "ส่วนประกอบหลัก" },
+        { part: "A", material_code: "RM-004", material_name: "Hydrogen Peroxide 35%", quantity: 20, unit: "L.", notes: "ฆ่าสปอร์และเชื้อไวรัส" },
+        { part: "B", material_code: "RM-002", material_name: "Glycerin USP", quantity: 5, unit: "L.", notes: "รักษาความชุ่มชื้น" }
       ]
     },
     {
       id: 3,
       product_id: 3,
+      product_code: "P-003",
+      product_name: "ผงซักล้างอุตสาหกรรมสูตรเข้มข้น C",
+      part_no: "PART-003",
       version: "v1.0",
       status: "active",
       notes: "ผงซักล้างสูตรด่างเข้มข้น",
       materials: [
-        { material_name: "Sodium Hydroxide (NaOH)", quantity: 50, unit: "กก.", notes: "สารทำปฏิกิริยาด่าง" },
-        { material_name: "Citric Acid", quantity: 15, unit: "กก.", notes: "สารปรับปรุงสภาพน้ำ" }
+        { part: "A", material_code: "RM-003", material_name: "Sodium Hydroxide (NaOH)", quantity: 50, unit: "KG.", notes: "สารทำปฏิกิริยาด่าง" },
+        { part: "B", material_code: "RM-005", material_name: "Citric Acid Anhydrous", quantity: 15, unit: "KG.", notes: "สารปรับปรุงสภาพน้ำ" }
+      ]
+    },
+    {
+      id: 4,
+      product_id: 4,
+      product_code: "IDV-SP-003",
+      product_name: "Rose Soap (สบู่กุหลาบ)",
+      part_no: "BS30",
+      version: "v1.0",
+      status: "active",
+      estimated_unit_cost: 86.5,
+      notes: JSON.stringify([
+        { instruction: "ละลาย Part A ด้วยอุณหภูมิ 60-75องศา จนหมด" },
+        { instruction: "ผสม Part B ให้เข้ากัน รอให้อุณหภูมิลดลงเหลือ 60องศา แล้วเติมลงใน Part A" },
+        { instruction: "รออุณหภูมิลดลงเหลือ 50-55องศา แล้วเติมลงใน Part A/B" }
+      ]),
+      materials: [
+        { part: "A", material_code: "RMSS-0010", material_name: "เบสใส", quantity: 100.00, unit: "KG.", notes: "เบสสบู่ใส (100% w/w)" },
+        { part: "A", material_code: "RMOP-0013", material_name: "Gold glitter mica / Gold Super Sparkle Mica (Size D, 200 Micron)", quantity: 0.02, unit: "G.", notes: "ผงไมก้าทองวิ้ง (0.02% w/w)" },
+        { part: "B", material_code: "RMCL-0009", material_name: "สีชมพูละลายน้ำ", quantity: 0.03, unit: "G.", notes: "สีผสมสบู่ (0.03% w/w)" },
+        { part: "C", material_code: "RMFL-0232", material_name: "กลิ่นดอกกุหลาบ", quantity: 1.00, unit: "G.", notes: "หัวน้ำหอมกุหลาบ (1.00% w/w)" }
       ]
     }
   ],
@@ -315,28 +363,59 @@ export async function clientGetList(entity: string): Promise<any[]> {
     }
 
     if (entity === "bom_recipes" && finalData) {
-      if (usedMockFallback) return finalData;
+      const memRecipes = memoryDB["bom_recipes"] || [];
       const enrichedRows = [];
       for (const row of finalData) {
         const item = { ...row };
+        const memMatch = memRecipes.find((m: any) => m.id === item.id);
+        
+        let supaMaterials: any[] = [];
         try {
           const { data: items, error: err2 } = await supabase.from("bom_items").select("*").eq("bom_id", item.id);
-          if (!err2 && items) {
-            item.materials = items.map((itm: any) => ({
+          if (!err2 && items && items.length > 0) {
+            supaMaterials = items.map((itm: any) => ({
+              part: itm.part || "A",
               raw_material_id: itm.raw_material_id,
+              material_code: itm.material_code || "",
               material_name: itm.material_name,
               quantity: parseFloat(itm.quantity),
               unit: itm.unit,
               notes: itm.notes || ""
             }));
-          } else {
-            item.materials = [];
           }
         } catch (e) {
+          supaMaterials = [];
+        }
+
+        if (supaMaterials.length > 0) {
+          item.materials = supaMaterials;
+        } else if (memMatch && memMatch.materials && memMatch.materials.length > 0) {
+          item.materials = memMatch.materials;
+        } else if (item.materials && item.materials.length > 0) {
+          // Keep existing
+        } else {
           item.materials = [];
         }
+
+        if (memMatch) {
+          item.part_no = item.part_no || memMatch.part_no;
+          item.product_code = item.product_code || memMatch.product_code;
+          item.product_name = item.product_name || memMatch.product_name;
+          item.version = item.version || memMatch.version;
+          item.status = item.status || memMatch.status;
+          item.notes = item.notes || memMatch.notes;
+          item.estimated_unit_cost = item.estimated_unit_cost || memMatch.estimated_unit_cost;
+        }
+
         enrichedRows.push(item);
       }
+
+      for (const memItem of memRecipes) {
+        if (!enrichedRows.some(r => r.id === memItem.id)) {
+          enrichedRows.push(memItem);
+        }
+      }
+
       return enrichedRows;
     }
 
@@ -410,16 +489,22 @@ export async function clientSave(entity: string, id: number, data: any): Promise
 
     // Handle child table saves
     if (entity === "bom_recipes" && materialsToSave !== null) {
-      await supabase.from("bom_items").delete().eq("bom_id", savedId);
-      for (const mat of materialsToSave) {
-        await supabase.from("bom_items").insert({
-          bom_id: savedId,
-          raw_material_id: mat.raw_material_id || null,
-          material_name: mat.material_name,
-          quantity: mat.quantity || 0,
-          unit: mat.unit || 'กก.',
-          notes: mat.notes || null
-        });
+      try {
+        await supabase.from("bom_items").delete().eq("bom_id", savedId);
+        for (const mat of materialsToSave) {
+          await supabase.from("bom_items").insert({
+            bom_id: savedId,
+            part: mat.part || "A",
+            raw_material_id: mat.raw_material_id || null,
+            material_code: mat.material_code || "",
+            material_name: mat.material_name,
+            quantity: mat.quantity || 0,
+            unit: mat.unit || 'KG.',
+            notes: mat.notes || null
+          });
+        }
+      } catch (errBomItems) {
+        console.warn("Could not insert to bom_items table in Supabase, using local memory:", errBomItems);
       }
     }
 
@@ -495,6 +580,18 @@ export async function clientSave(entity: string, id: number, data: any): Promise
     }
     if (entity === "purchase_orders" && itemsToSave !== null) {
       cleanData.items = itemsToSave;
+    }
+
+    if (entity === "grns" && id === 0) {
+      const rawMaterialId = parseInt(cleanData.raw_material_id || 0);
+      const receivedQty = parseFloat(cleanData.received_qty || 0);
+      if (rawMaterialId && receivedQty) {
+        const matIdx = memoryDB.raw_materials.findIndex((m: any) => m.id === rawMaterialId);
+        if (matIdx >= 0) {
+          memoryDB.raw_materials[matIdx].stock_qty = parseFloat(memoryDB.raw_materials[matIdx].stock_qty || 0) + receivedQty;
+          saveMemory();
+        }
+      }
     }
 
     if (id > 0) {

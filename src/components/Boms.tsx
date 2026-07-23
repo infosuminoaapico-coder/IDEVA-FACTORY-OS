@@ -44,6 +44,7 @@ export default function Boms({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BomRecipe | null>(null);
   const [editingBom, setEditingBom] = useState<BomRecipe | null>(null);
+  const [targetBatchQty, setTargetBatchQty] = useState<number>(50);
 
   // Print Popup states
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
@@ -520,38 +521,85 @@ export default function Boms({
                 );
               })()}
 
-              {/* REQ SPECIFIC: รายการวัตถุดิบทั้งหมดพร้อมปริมาณและหน่วย */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Database className="w-4 h-4 text-slate-500" /> รายการวัตถุดิบและส่วนผสมหลัก (Ingredients)
-                  </h4>
-                  <span className="text-[9px] text-slate-400">อัตราส่วนต่อ 1 ถังผสมมาตรฐาน</span>
+              {/* REQ SPECIFIC: รายการวัตถุดิบ + ตัวแปลงสัดส่วนอัตโนมัติตามเป้าหมายการผลิต (Auto Batch Converter) */}
+              <div className="space-y-3">
+                <div className="bg-blue-50/70 border border-blue-200 p-3 rounded-xl flex flex-wrap items-center justify-between gap-2 shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-blue-600 animate-pulse" />
+                    <div>
+                      <h5 className="text-xs font-bold text-blue-900">ตัวแปลงปริมาณการผลิตอัตโนมัติ (Auto Batch Production Converter)</h5>
+                      <p className="text-[10px] text-blue-700">กรอกเป้าหมายจำนวนที่จะผลิต ระบบจะแปลงสัดส่วนสารให้อัตโนมัติทันที</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-[11px] font-bold text-slate-700">ผลิตจริงจำนวน:</label>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0.1"
+                      value={targetBatchQty}
+                      onChange={(e) => setTargetBatchQty(Math.max(0.1, parseFloat(e.target.value) || 0))}
+                      className="w-24 px-2.5 py-1 text-xs font-bold font-mono text-center bg-white border border-blue-300 rounded-lg text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span className="text-xs font-bold text-slate-700">KG.</span>
+                  </div>
                 </div>
 
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
                   <table className="w-full text-left text-xs text-slate-600">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500">
-                        <th className="p-2 w-8 text-center">#</th>
+                      <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] text-slate-600 font-bold">
+                        <th className="p-2 w-10 text-center">Part</th>
                         <th className="p-2">ชื่อวัตถุดิบเคมีภัณฑ์</th>
-                        <th className="p-2 text-right">ปริมาณส่วนผสม</th>
-                        <th className="p-2 w-16 text-center">หน่วย</th>
+                        <th className="p-2 text-right">สัดส่วนสูตร (% w/w)</th>
+                        <th className="p-2 text-right">ปริมาณต่อ 1 KG.</th>
+                        <th className="p-2 text-right bg-blue-50 text-blue-800 font-extrabold">
+                          ชั่งจริง ({targetBatchQty} KG.)
+                        </th>
                         <th className="p-2">หมายเหตุ</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {selectedBom.materials.map((m, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/40">
-                          <td className="p-2 text-center text-slate-400 font-mono">{idx + 1}</td>
-                          <td className="p-2 font-semibold text-slate-800">{m.material_name}</td>
-                          <td className="p-2 text-right font-bold font-mono text-blue-600">{m.quantity.toLocaleString()}</td>
-                          <td className="p-2 text-center text-slate-500 font-medium">{m.unit}</td>
-                          <td className="p-2 text-slate-400 text-[10px] truncate max-w-[100px]" title={m.notes || ""}>
-                            {m.notes || "-"}
-                          </td>
-                        </tr>
-                      ))}
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {(() => {
+                        const totalFormulaSum = selectedBom.materials.reduce((sum, m) => sum + (Number(m.quantity) || 0), 0) || 100;
+                        return selectedBom.materials.map((m, idx) => {
+                          const rawQty = Number(m.quantity) || 0;
+                          const ratio = rawQty / totalFormulaSum;
+                          const percentStr = (ratio * 100).toFixed(2);
+                          
+                          // 1 KG Baseline
+                          const oneKgInGrams = ratio * 1000;
+                          const oneKgDisplay = oneKgInGrams >= 1000 
+                            ? `${(oneKgInGrams / 1000).toFixed(2)} KG.` 
+                            : `${oneKgInGrams.toFixed(2)} g`;
+
+                          // Target Batch Qty
+                          const batchInKg = ratio * targetBatchQty;
+                          const batchDisplay = batchInKg >= 1 
+                            ? `${batchInKg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KG.` 
+                            : `${(batchInKg * 1000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} g`;
+
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                              <td className="p-2 text-center font-bold font-mono text-slate-600 bg-slate-50/50">
+                                {m.part || (idx >= 3 ? (idx >= 6 ? "C" : "B") : "A")}
+                              </td>
+                              <td className="p-2 font-bold text-slate-800">
+                                {m.material_name}
+                                {m.material_code && <span className="ml-1.5 text-[10px] text-slate-400 font-mono font-normal">({m.material_code})</span>}
+                              </td>
+                              <td className="p-2 text-right font-bold font-mono text-slate-700">{percentStr}%</td>
+                              <td className="p-2 text-right font-medium font-mono text-slate-500">{oneKgDisplay}</td>
+                              <td className="p-2 text-right font-extrabold font-mono text-blue-700 bg-blue-50/40">
+                                {batchDisplay}
+                              </td>
+                              <td className="p-2 text-slate-400 text-[10px] truncate max-w-[120px]" title={m.notes || ""}>
+                                {m.notes || "-"}
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
                     </tbody>
                   </table>
                 </div>

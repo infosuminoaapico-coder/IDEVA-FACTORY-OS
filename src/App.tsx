@@ -202,6 +202,19 @@ export default function App() {
   // Triggered when GRN is created (adds chemicals to stock)
   const handleAddGrn = async (grn: any) => {
     await handleSave("grns", grn, "บันทึกใบ GRN และอัปเดตสต็อกคงคลังสำเร็จ!");
+    
+    // Explicitly update raw_material stock_qty in database / memory
+    const matId = Number(grn.raw_material_id);
+    const qty = parseFloat(grn.received_qty) || 0;
+    if (matId && qty > 0) {
+      const mat = rawMaterials.find(rm => rm.id === matId);
+      if (mat) {
+        const newStock = parseFloat(String(mat.stock_qty || 0)) + qty;
+        const updatedMat = { ...mat, stock_qty: newStock };
+        await clientSave("raw_materials", mat.id, updatedMat);
+        await loadAllData();
+      }
+    }
   };
 
   // Render subpage views

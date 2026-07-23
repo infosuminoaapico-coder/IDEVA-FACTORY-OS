@@ -1816,7 +1816,9 @@ export function InventoryPage({
                 {filteredRaw.map(rm => {
                   const isLow = rm.stock_qty <= rm.min_stock;
                   const unitPrice = rm.unit_price || 0;
-                  const totalVal = rm.stock_qty * unitPrice;
+                  const unitUpper = (rm.unit || "KG.").toUpperCase().trim();
+                  const isGramOrMl = unitUpper === "G." || unitUpper === "G" || unitUpper === "GRAM" || unitUpper === "ML." || unitUpper === "ML" || unitUpper === "MILLILITRE";
+                  const totalVal = isGramOrMl ? (rm.stock_qty / 1000) * unitPrice : rm.stock_qty * unitPrice;
 
                   return (
                     <tr key={rm.id} className="odd:bg-white even:bg-[#f8f9fa] hover:bg-[#e8f0fe]/70 transition-colors">
